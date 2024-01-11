@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import _ from 'lodash'
 import { NestedIndex } from 'jsong-audio/src/types/common';
 import Card from './styled/Card.vue';
+import { computed } from 'vue';
 const props = withDefaults(
-  defineProps<{sections: string[], active: NestedIndex, depth: number, indexDepth: number }>(),
+  defineProps<{sections: string[], active: NestedIndex, depth: number, indexDepth?: any }>(),
   {depth: 0}
 )
 </script>
@@ -11,17 +13,17 @@ const props = withDefaults(
       <template v-for="(section, index) in props.sections">
         <FlowList v-if="typeof section !== 'string'" 
           :sections="section"
-          
-          :depth="depth + 1"
-
           :active="active"
           :style='`
             margin-left: 1rem;
             filter: hue-rotate(${index * 30 + 20}deg)
           `'
+          :indexDepth="indexDepth ? [...indexDepth, index] : [index]"
         />
-        <Card v-else :class="active[depth] === index && 'active'">
-          {{ index }},{{ depth }}
+        <Card v-else
+          :class="_.isEqual([...indexDepth || [], index],active) && 'active'"
+        >
+          {{ [...indexDepth || [], index] }}
         </Card>
         <span class="next-arrow" v-if="index !== props.sections.length-1">
           ⇓
@@ -37,7 +39,7 @@ const props = withDefaults(
   flex-direction: column;
   align-items: stretch;
 
-  padding: 0.25rem;
+  margin: 0.25rem;
   background-color: lightblue;
 }
 .flow-list .card {

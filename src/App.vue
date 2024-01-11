@@ -44,7 +44,7 @@ const posttime = beatCount;
 </script>
 
 <template>
-    <nav>
+    <!-- <nav>
     <div class="controls">
       <Control type="back" />
       <Control type="play"/>
@@ -82,12 +82,12 @@ const posttime = beatCount;
         :style="`filter: hue-rotate(${index * 70}deg)`"
       />
     </ul>
-  </main>
+  </main> -->
 
-  <article class="flow">
-    <h2 class='heading'>Flow</h2>
-    <FlowList class='flows' :active="[1,0]" :sections="jsong.playback.flow" />
-  </article>
+  <!-- <article class="flow">
+    <h2 class='heading'>Flow</h2> -->
+    <FlowList class='flows' :active="[3,0,1]" :sections="jsong.playback.flow" />
+  <!-- </article>
   <section class="tracks">
     <h2 class='heading'>Tracks</h2>
     <ul v-for="track in tracks">
@@ -95,12 +95,12 @@ const posttime = beatCount;
         <Volume track />
       </li>
     </ul>
-  </section>
+  </section> -->
 </template>
 
 <style>
 #app {
-  display: grid;
+  /* display: grid; */
   grid-template:
     "nav nav" min-content
     "time time" max-content
@@ -133,7 +133,7 @@ main {
 }
 .sections .heading {
   grid-area: title;
-  writing-mode: vertical-lr;
+  writing-mode: vertical-rl;
   margin-top: 0.5rem;
 }
 
