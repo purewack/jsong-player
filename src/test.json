@@ -18,10 +18,13 @@
     "map": {
       "intro": { "region": [0, 4], "grain": 16 },
       "chorus": { "region": [4, 8], "grain": 8 },
-      "verse1": { "region": [8, 12], "grain": 4 },
-      "bridge1": { "region": [12, 16], "grain": 4 }
+      "verse1": { "region": [8, 12]},
+      "bridge1": { "region": [12, 16]},
+      "bridge-X": { "region": [12, 16]},
+      "verse2": { "region": [16,24]},
+      "verse3": { "region": [24,28]}
     },
-    "flow": ["intro", "chorus", "verse1", "bridge1"],
+    "flow": ["intro", "chorus", "verse1", [["bridge-X", "verse2"],"verse1"]],
     "filter": {
       "rolloff": -24,
       "resonance": 3

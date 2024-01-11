@@ -3,9 +3,9 @@ defineProps({ dark: Boolean });
 </script>
 
 <template>
-  <section :class="dark ? 'card dark' : 'card'">
+  <div :class="dark ? 'card dark' : 'card'">
     <slot />
-  </section>
+  </div>
 </template>
 
 <style scoped>

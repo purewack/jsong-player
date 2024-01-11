@@ -26,6 +26,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@types/lodash": "^4.14.202",
     "@vitejs/plugin-vue": "^5.0.1",
     "electron": "^28.1.0",
     "electron-builder": "^24.9.1",

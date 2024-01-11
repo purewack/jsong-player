@@ -1,48 +1,62 @@
 <script setup lang="ts">
-import { Section } from "../types";
-const { beatPX, meter, totalMeasures, totalSections, currentSection } =
+import {ref, computed} from 'vue'
+import { JSONgManifestFile } from "jsong-audio/src/types/jsong";
+
+import Playhead from './Playhead.vue'
+
+const props =
   defineProps<{
-    beatPX: number;
-    meter: [number, number];
-    totalMeasures: number;
-    totalSections: Section[];
-    currentSection: Section & {
-      beat: number;
-    };
+    jsong: JSONgManifestFile,
+    measurements: {
+        barCount: number;
+        beatCount: number;
+    },
+    playhead?: {
+      beat: number,
+      region: [number, number]
+    }
   }>();
-const time = meter[0] / (meter[1] / 4);
-const major = totalMeasures / meter[1];
-const minor = major * meter[0];
-const size = minor * beatPX;
+ 
+  const ticks = computed(()=>{
+    const major = props.measurements.barCount;
+    const minor = props.measurements.beatCount;
+    return {major, minor}
+  })
 </script>
 
 <template>
-  <svg class="timeline" :width="size">
-    <line x1="0" :x2="size" y1="100%" y2="100%" stroke="black" />
+  <svg class="timeline" width="100%" stroke-linecap="round">
+    <line x1="0" x2="100%" y1="100%" y2="100%" stroke="black" />
     <line
-      v-for="tick in minor"
-      :x1="`${(tick / minor) * size}`"
-      :x2="`${(tick / minor) * size}`"
-      y1="100%"
-      y2="80%"
+      v-for="tick in ticks.minor"
+      :x1="`${(tick / ticks.minor) * 100}%`"
+      :x2="`${(tick / ticks.minor) * 100}%`"
+      y1="max(1rem, 50%)"
+      y2="100%"
       stroke="gray"
     />
     <line
-      v-for="tick in major"
-      :x1="`${(tick / major) * size}`"
-      :x2="`${(tick / major) * size}`"
-      y1="50%"
+      v-for="tick in ticks.major"
+      :x1="`${(tick / ticks.major) * 100}%`"
+      :x2="`${(tick / ticks.major) * 100}%`"
+      y1="1rem"
       y2="100%"
       stroke="black"
     />
     <text
-      v-for="tick in major"
+      v-for="tick in ticks.major"
       text-anchor="middle"
-      :x="`${(tick / major) * size}`"
-      y="40%"
+      alignment-baseline="hanging"
+      :x="`${(tick / ticks.major) * 100}%`"
+      y="0%"
     >
       {{ tick }}
     </text>
+
+    <Playhead v-if="playhead" 
+      v-bind="playhead"
+      :ticks="ticks"
+    />
   </svg>
 </template>
 

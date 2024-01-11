@@ -1,31 +1,51 @@
 <script setup lang="ts">
-import { Section } from "../types";
+import { computed } from "vue";
 import Card from "../parts/styled/Card.vue";
-const { data, beatPX, beat } = defineProps<{
+
+import { Section } from "../types";
+import { JSONgManifestFile } from "jsong-audio/src/types/jsong";
+import JSONg from "jsong-audio/src/JSONg";
+
+const props = defineProps<{
   data: Section;
-  beat: number;
-  beatPX: number;
+  jsong: JSONgManifestFile,
+  measurements: {
+      barCount: number;
+      beatCount: number;
+  }
 }>();
+
+const offset = computed(()=>props.data.region[0] / props.measurements.beatCount )
+const width = computed(()=>(props.data.region[1] - props.data.region[0]) / props.measurements.beatCount)
 </script>
 
 <template>
   <li
     class="section"
     :style="`
-    transform:translateX(${data.region[0] * beatPX}px);
-    width: ${(data.region[1] - data.region[0]) * beatPX}px;
+    position: relative;
+    left: ${100 * offset}%;
+    width: ${100 * width}%;
     `"
   >
-    <Card>{{ data.name }}</Card>
+    <Card>
+      {{ data.name }}
+      <br/>
+      {{ data.region }}
+      <br/>
+      #{{ data?.grain || jsong.playback.grain }}
+    </Card>
   </li>
 </template>
 
 <style scoped>
 .section .card {
+  opacity: 0.6;
   background: lightblue;
   letter-spacing: 0.1rem;
-}
-.section {
-  filter: brightness(1) hue-rotate(0deg);
+  height: 100%;
+  padding: 0.25rem;
+  contain: paint;
+  text-wrap: nowrap;
 }
 </style>

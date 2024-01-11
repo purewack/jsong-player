@@ -2,10 +2,15 @@
   font-family: "Josefin Sans";
   src: url('./assets/JosefinSans.ttf')
 }
+@font-face {
+  font-family: "Raleway";
+  src: url('./assets/Raleway.ttf')
+}
 
 * {
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 #app {
   min-height: 100dvh;
@@ -41,4 +46,8 @@ button:hover {
 }
 button:active {
   outline: solid black 2px;
+}
+
+ul,ol {
+  list-style: none;
 }

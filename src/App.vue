@@ -1,68 +1,83 @@
 <script setup lang="ts">
-import { ref, provide } from "vue";
+import { ref, reactive, provide } from "vue";
 import _ from "lodash";
 
 import JSONg from 'jsong-audio/src'
 import testJSONg from "./test.json";
 
+import Card from "./parts/styled/Card.vue";
+
 import Logo from "./parts/Logo.vue";
+import MetaInfo from "./parts/MetaInfo.vue";
 import Volume from "./parts/Volume.vue";
 import Control from "./parts/Control.vue";
 import Timeline from "./parts/Timeline.vue";
 import MapSection from "./parts/MapSection.vue";
-import Card from "./parts/styled/Card.vue";
+import FlowList from "./parts/FlowList.vue";
 
 const dark = ref(false);
 provide("theme", dark);
 
-
-const position = ref('')
-const player = new JSONg('all');
-player.parse('sample/audio.jsong');
-player.addEventListener('onTransport',(ev)=>{
-    position.value = ev.detail.position
-})
-
+// const playerInfo = reactive({})
+// const player = new JSONg('all');
+// player.parse('sample/audio.jsong');
+// player.addEventListener('onTransport',(ev: CustomEvent)=>{
+//     position.value = ev.detail.position
+// })
 
 const jsong = ref(testJSONg);
 const tracks = testJSONg.tracks.map((t) => {
   return { ...t, volume: 0 };
 });
 
-const totalMeasures = _.maxBy(
+const beatCount = _.maxBy(
   _.values(testJSONg.playback.map),
   (section) => section.region[1],
 ).region[1];
+const barCount = beatCount / testJSONg.playback.meter[0];
+const measurements = {barCount, beatCount}
+console.log(measurements)
 
-const unitZoom = 30;
 </script>
 
 <template>
     <nav>
     <div class="controls">
       <Control type="back" />
-      <Control type="play" @click='player.play()'/>
+      <Control type="play"/>
       <Control type="next" />
     </div>
+    <MetaInfo :jsong='jsong' />
     <Logo />
   </nav>
 
-  <main>
+  <main class="sections">
+    <h2>Sections</h2>
+    <div class="regions">
     <Timeline
       class="timeline"
-      :beatPX="unitZoom"
-      :totalMeasures="totalMeasures"
-      :meter="jsong.playback.meter"
+      :measurements="measurements"
+      :jsong="testJSONg"
+      :playhead="{beat: 6, region: [4,12], pause: false}"
     />
-    <ul v-for="(section, name) in jsong.playback.map">
-      <MapSection :data="{ ...section, name }" :beatPX="unitZoom" />
+    <ul class="section-blocks" >
+      <MapSection 
+        v-for="(section, name, index) in jsong.playback.map"
+        class="block"
+        :key="name"
+        :measurements="measurements"
+        :jsong="testJSONg"
+        :data="{ ...section, name }" 
+        :style="`filter: hue-rotate(${index * 70}deg)`"
+      />
     </ul>
+    </div>
   </main>
-  <section class="meta">
-    <h3>Title: {{ jsong.meta.title }}</h3>
-    <h4>By: {{ jsong.meta.author }}</h4>
-    <p>Version: {{ jsong.meta.projectVersion }}</p>
-  </section>
+
+  <article class="flow">
+    <h2>Flow</h2>
+    <FlowList class='flows' :active="[1,0]" :sections="jsong.playback.flow" />
+  </article>
   <section class="tracks">
     <ul v-for="track in tracks">
       <li class="track">
@@ -77,30 +92,56 @@ const unitZoom = 30;
   display: grid;
   grid-template:
     "nav nav" min-content
-    "time time" min-content
-    "meta tracks" auto
+    "time time" max-content
+    "flow tracks" auto
     / 1fr 4fr;
 }
 nav {
   grid-area: nav;
 }
-main {
-  overflow-x: scroll;
-  height: max-content;
-  grid-area: time;
-}
-ul {
-  list-style: none;
-}
-
 .controls {
   text-align: center;
 }
-.logo {
+.meta {
+  text-align: right;
   margin-left: auto;
+  margin-right: 1rem;
 }
 
+
+main {
+  height: max-content;
+  grid-area: time;
+}
+.timeline.timeline {
+  height: 2rem;
+}
+.regions {
+  /* display: grid; */
+  grid-template-areas: "tt";
+}
+.regions * {
+  grid-area: tt;
+}
+.section-blocks {
+  /* display: flex; */
+  /* display: grid; */
+  grid-template-areas: "abs";
+}
+.block {
+  grid-area: abs;
+}
+
+.flow {
+  grid-area: flow;
+}
+.flows{
+  overflow-y: scroll;
+}
+
+
 .tracks {
+  grid-area: tracks;
   list-style: none;
 }
 .track {
