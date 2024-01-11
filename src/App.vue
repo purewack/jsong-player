@@ -35,8 +35,11 @@ const beatCount = _.maxBy(
   (section) => section.region[1],
 ).region[1];
 const barCount = beatCount / testJSONg.playback.meter[0];
-const measurements = {barCount, beatCount}
+const measurements = {barCount, beatCount, meter: testJSONg.playback.meter as [number,number]}
 console.log(measurements)
+
+const pretime = testJSONg.playback.meter[0] * 2;
+const posttime = beatCount;
 
 </script>
 
@@ -51,19 +54,27 @@ console.log(measurements)
     <Logo />
   </nav>
 
-  <main class="sections">
-    <h2>Sections</h2>
-    <div class="regions">
+  <main class="sections" :style='`
+    grid-template-columns: ${pretime}fr ${posttime}fr; 
+  `'>
+    <h2 class='heading'>Sections</h2>
+    <Timeline 
+      pre
+      class="pre-timeline"
+      :jsong="testJSONg"
+      :measurements="measurements"
+    />
     <Timeline
       class="timeline"
       :measurements="measurements"
       :jsong="testJSONg"
       :playhead="{beat: 6, region: [4,12], pause: false}"
     />
-    <ul class="section-blocks" >
+    <ul class="section-blocks" :style="`
+      grid-template-columns: repeat(${measurements.beatCount},1fr);
+    `">
       <MapSection 
         v-for="(section, name, index) in jsong.playback.map"
-        class="block"
         :key="name"
         :measurements="measurements"
         :jsong="testJSONg"
@@ -71,14 +82,14 @@ console.log(measurements)
         :style="`filter: hue-rotate(${index * 70}deg)`"
       />
     </ul>
-    </div>
   </main>
 
   <article class="flow">
-    <h2>Flow</h2>
+    <h2 class='heading'>Flow</h2>
     <FlowList class='flows' :active="[1,0]" :sections="jsong.playback.flow" />
   </article>
   <section class="tracks">
+    <h2 class='heading'>Tracks</h2>
     <ul v-for="track in tracks">
       <li class="track">
         <Volume track />
@@ -113,24 +124,36 @@ main {
   height: max-content;
   grid-area: time;
 }
+
+.sections {
+  display: grid;
+  grid-template-areas: 
+    "pre time"
+    "title content";
+}
+.sections .heading {
+  grid-area: title;
+  writing-mode: vertical-lr;
+  margin-top: 0.5rem;
+}
+
+.pre-timeline {
+  grid-area: pre;
+}
 .timeline.timeline {
   height: 2rem;
 }
-.regions {
-  /* display: grid; */
-  grid-template-areas: "tt";
-}
-.regions * {
-  grid-area: tt;
-}
+
 .section-blocks {
-  /* display: flex; */
-  /* display: grid; */
-  grid-template-areas: "abs";
+  display: grid;
+  grid-auto-rows: min-content;
 }
-.block {
-  grid-area: abs;
+.section-blocks .section {
+  display:block;
+  grid-column-start: var(--offset);
+  grid-column-end: var(--end);
 }
+
 
 .flow {
   grid-area: flow;
