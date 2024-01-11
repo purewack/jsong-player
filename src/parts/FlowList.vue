@@ -11,19 +11,22 @@ const props = withDefaults(
 <template>
     <ol class='flow-list'> 
       <template v-for="(section, index) in props.sections">
-        <FlowList v-if="typeof section !== 'string'" 
-          :sections="section"
-          :active="active"
-          :style='`
-            margin-left: 1rem;
-            filter: hue-rotate(${index * 30 + 20}deg)
-          `'
-          :indexDepth="indexDepth ? [...indexDepth, index] : [index]"
-        />
+  
+          <FlowList v-if="typeof section !== 'string'"  
+            class="array"
+            :sections="section"
+            :active="active"
+            :indexDepth="indexDepth ? [...indexDepth, index] : [index]"
+          />
+        
         <Card v-else
+          :style="`
+            filter: hue-rotate(${index * 30 + 20}deg)
+          `"
           :class="_.isEqual([...indexDepth || [], index],active) && 'active'"
         >
-          {{ [...indexDepth || [], index] }}
+          {{section}}
+          <!-- {{ ' @ ' + [...indexDepth || [], index] }} -->
         </Card>
         <span class="next-arrow" v-if="index !== props.sections.length-1">
           ⇓
@@ -34,24 +37,40 @@ const props = withDefaults(
 
 <style scoped>
 .flow-list {
-  border: dotted 1px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-
-  margin: 0.25rem;
-  background-color: lightblue;
 }
 .flow-list .card {
-  padding: 0.5rem;
-  background-color: white;
+  padding: 0.25rem;
+  background-color: lightblue;
 }
 .next-arrow {
   align-self: center;
 }
 
+
+.flow-list.array{
+  margin-right: 1px;
+  margin-left: 0.5rem;
+  /* border-inline: dotted lightgray 1px; */
+}
+.flow-list::before,
+.flow-list::after {
+  content: '';
+  display: inline-block;
+  height: 3px;
+  margin: 1px;
+  border: solid lightgray 1px;
+}
+
+.flow-list::before {
+  border-bottom: none;
+}
+.flow-list::after {
+  border-top: none;
+}
 .active.active {
-  background-color: lightseagreen;
-  color: white;
+  
 }
 </style>

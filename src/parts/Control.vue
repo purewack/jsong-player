@@ -1,20 +1,9 @@
 <template>
-  <button>
-    <img
-      v-if="type === 'play'"
-      class="icon play"
-      src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAACXBIWXMAAAsTAAALEwEAmpwYAAADC0lEQVR4nO3dvWsUQRzG8e8JwVSaiI1BCwVB5WqrCySFWKUxaqHWgpWoha1lbAQrtRCJqCDGykIR0cK3P0BQsPWtsPElghE0suE3MiyXoBJufjPzfCDV3h1793C5Z3dnZ0BERERERERERETEmY3ASeA6cBM4BYym3qla7QU+Aoutv0/AMWBN6h2syU5g3gK4DxwCDgN3o2CeALtS72gtrtqHfgXotLbtA97Z9gXgDLA20X5WI3zg25bZvh64CPyyx70EegPex6qED7r97WgbB17ZY38CFywsWWXhd+JvDAGnge/2nA/AASWSLpBgO/Aweu4dYIuCSRcI9i/uKPA5qsjHVZHTBRJsAm5Fr/NUFTltIMEU8MZe6wcwo4qcNhCsdZ23Fta85mtgcmmLJAkk6NnxyqLV6ubgc8OfrTLwQPpV5PfA/qUtkiSQuCI/UkX2E0hDFdlZIHFFntNZZD+BBKrIzgJpqCI7C2S5inwJWEfFUgfSUEV2FkjQBZ61KvJmKuMpkEb1FdlbICtV5GZARvG8BlJtRfYeSGOkz1nkCQqVQyBVVeScAmkM2/iwhegs8jQFyS2QuCI/L7Ei5xpIXJG/lDTQIudAgjHgdvReHudckUsIJK7Ib3OvyCUFgt3TcjkaIvsC2E1GSgskmLDjlUW7rn+QTJQaSKjI5+z9fVthhL8rJQcSXLP3eJYM1BDIHnuPD8iAAnGmpn9ZM2Sglh/1eWArGSg1kMlW7c3mTq/SAhnVgaEfOnXihE4uOtHR6Xc/urpA5cOwLuH6Ma5BDj6MaBiQH1MlXAUs4cBwrHWdXENJE+nUPmWHp29It9Qqm1sgQ7qn3U8gvRqq7L/QTZ/O6LZoZzRxgDOaWqOyQLp97qzV/IwJAhlSlf0/msDMGU3x54wmwSxwmtg5TRObPpBO7WdlPQWieRSdBKLJ+AdAy1VktqDLiJ0S14IuAzJrgcz2WdRl2qauaLZryaMB2QF8jRYFO2KLgt3TdK5p78HTsnlOF5a8YYtLnrDfDxERERERERERERFhlf0GIDSbcCZLs3cAAAAASUVORK5CYII="
-    />
-    <img
-      v-else-if="type === 'next'"
-      class="icon next"
-      src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAACXBIWXMAAAsTAAALEwEAmpwYAAAD90lEQVR4nO3cT6hWRRjH8a/pJS01/yVCiBUUoiimbkQNQ6RFCkUpbXTZ1o0grtTd1Y2IELitnViIiKBgoIgaWEQlUgaFVEo3S6O0zBwZeAaGs0l8PGfmOef5wAv3Xu573t+Pe7jvnDMzLzjnnHPOOeecc84555xzzjnnnHPOOecGZAQYBcaA34EDwDPUm/PXynOq7QEC8DdwX76+CqyjLnuM5FQbk3IvAQuBC/J9LP0+MJk6jBnJqRbkkUwAdgD/yM+/A1ZTXjCS87EXTeJZeDE7Cw8CT1NOMJKztaLpLNzeOAtXUUYwkrPVosli4Av5vX9ltPMk3QpGcnZSNJooBe/J738FLKU7wUjOzoomK4Bv5Dl3pXy8RmhbMJKz86LRJCn4nzz3U2A+7QpGchYpmqySN9D4/DvyxjqeYecsWjSaKkPNdPV8Ti7ehpqzeNHkdeBHOdZtOQufYHg5qykaTZOzMB3zJDB3YDmrKpq8A/wix70FvDegnFUWjWYDH2XHPw48N4Ccam0VTTbKHEaQeYzNPc+p1nbRaA5wNHutQ8As+plTrYuiyRbgD3m968Cb9C+nWpdFo3nAqcZZOIP+5FTrumg0TkY0f8pr/wyspx851UoUTV4ETjcmlyYbz6lWsihylbxVFi/EHN8Da7CbU6100YedirWSU62Wov83FWslp1pNRZPlwNfZVOxuQznVNyprLJqmYvdmU7FWcu7UHrDWovkNwJr/IM2c17QHqr3oK0b+IClnvMJXqbnoq7J+NxjK+aH2YDUWHQ/syv4vnzWUU317pbaic4Ez2Th/vyzfsZJTraaibwE3sruscf7bWk61GopOlDMsZTkCzDSaU6100QXAl9maqa1yl9VqTrWSRbcAf8nrXwaW9CCnWomisxpTpR88xA06KznVui76WrZQ7Sbwbs9yqnVVdEJjzH4eeKGHOdW6KDovu7i794hbA6zkVGu76NvAb/IaV+U2Q59zqrVVdFJjzP6x8raClZxqbRRdmu1euiNj9qHkrKrouMZCgEvAooHlrKbos8Cxxpj9KYaXs4qia4Gf5DjxIzA2MNycRYumMXvaVPlJi0v5g5GcxYo+L/v00oqLXS1vpAxGchYpulH2UMTn/QCspH3BSM5Oi06RN8H0nMPAdLoRjOTsrGhcFHYl273a9Zg9GMnZetE0Zk/LJj8DXqZ7wUjOVovOlk2Q+UR+qU/XCUZytlZ0nazCC7J1+A3KCkZyPvai8czal30ExQnZDFlaMJJTLW2c3wQsAz6X7+P/4m1tTeT3OKfaaHb2pce3MlqpyaiRnGoj8pm4Y/LYJ+P42owYyemcc84555xzzjnnnHPOOeecc46qPQDKl2aRet8mhQAAAABJRU5ErkJggg=="
-    />
-    <img
-      v-else-if="type === 'back'"
-      class="icon back"
-      src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAACXBIWXMAAAsTAAALEwEAmpwYAAADm0lEQVR4nO3dW6hMURzH8e9xzTW33BMi5JIkEiUPyJ08UXjzhuKBQ0l58eDFi/JIlChPJ7eciFAk5ZYkSXInjjuxtes/tZpmT2POnpm11/59akpndtua9bNn2fu/1jogIiIiIiIiIiIiIlKJq8AVdZU/Inv5bgnQCrwH3gGngQUEyPdAegFHnHYWv/YSGJ8DmQk8tvZ9BrYBo+znx5y2LyUgPgbSAdgJ/LK23QTGljjuoL0ff5UFw7dAhgMXrU1/gQNAl4RjR9hxHwiIT4GssgE7bs8rYFHG2p8KHz5QN7sSCm05CwzOUPtT1egPNBG4Y234DmwBmjLU/tQ16gM1Wef/sL//PjClivMokBQMBFqcgfsQ0L3KcymQdpoPvLCOfAMsa+f5FEiVugL7gD/WiReAobSfAqnCBOC2dV58s7fHbv7SoED+03rgi3XcQ2Aa6VIgFeoDHHc6LH5A2JP0KZAKzAOeW2d9BNZQOwqkjE42PhQG7mv2dLaWFEiCkVZ9jDvotwXTkdpTIAkD92frnKfAbOpHgTh6A0edTjlhg3k9KZAS1bw2YB2NkftAOgLbnWreDWBMg8LIfSAjgMtF1bzODQwj14GstlJpfOwzYC5+yF0gxdW8U0A//JGrQKYDj+z9b1ZQ8k0uAilU837ae3eBSfgp+EAGAWeKBu64luGroANZ4UzDeQ0sxn9RqIHsdv7cYnXvLIhCDSSyMWPTf07DabSgA9lA9kShBtKWYp27noINJJ412IPsiUINJH5tJXuikAOJK32bNag3ViGMXfpvr3+X/MqiG8N4oaXvolC/sgr06CQDDxfvAZPxU/BXiEuP3zNSoOqPP3J1hSSVcF8CC/FDbgNJmuSQtGS5XnIdSNI0oFKL+usl94EkTZTbSGMokDJTSU8CfakvBVLBZOs51I8CSaDlCBlYsHMdGE1t6QqpYknbWmpHgVRIiz4zsCz6CTAr5fPrCqnCeGfjgML6Q20c4NnWGq3AsBTOqyskxc1n3gLL23k+BZLy9kyFXR60PZNnG5g9AKZWcR5dISnTFn8e/gvrVlSVPAcMyVD7U+XTB1pZxfoUn9qfCt83Ut5fpio5wI7TRso1Ft80NjtVyVvAuBLH7XC2CwyGb1eIa4ZTlfxim/H3t02Wm+2uP8rIDMsgAin8uorDRZPCI+crLX4MExTfA8FZkHoJ+Ap8As7bXX9wrtjUHhERERERERERERERERERoZx/YUnjSWYCRDUAAAAASUVORK5CYII="
-    />
+  <button class="control">
+    <i v-if="type === 'play'" class="bi bi-play-fill"></i>
+    <i v-else-if="type === 'next'" class="bi bi-fast-forward-fill"></i>
+    <i v-else-if="type === 'back'" class="bi bi-stop-fill"></i>
+    <i v-else-if="type === 'volume'" class="bi bi-volume-down-fill"></i>
   </button>
 </template>
 
@@ -23,8 +12,9 @@ defineProps({ type: String });
 </script>
 
 <style scoped>
-.icon {
-  height: 2rem;
-  object-fit: contain;
+.control {
+  font-size: 1.25rem;
+  padding: 0.75rem;
+  padding-bottom: 0.54rem;
 }
 </style>

@@ -2,6 +2,8 @@
 import { ref, reactive, provide } from "vue";
 import _ from "lodash";
 
+import "bootstrap-icons/font/bootstrap-icons.css"
+
 import JSONg from 'jsong-audio/src'
 import testJSONg from "./test.json";
 
@@ -44,20 +46,32 @@ const posttime = beatCount;
 </script>
 
 <template>
-    <!-- <nav>
+  <nav>
     <div class="controls">
       <Control type="back" />
       <Control type="play"/>
       <Control type="next" />
+      <Control type="volume" />
     </div>
     <MetaInfo :jsong='jsong' />
     <Logo />
   </nav>
+  
+  <section class="tracks">
+    <h2 class='heading'>Tracks</h2>
+    <ul v-for="track in tracks">
+      <li class="track">
+        <Volume track />
+      </li>
+    </ul>
+  </section>
 
   <main class="sections" :style='`
     grid-template-columns: ${pretime}fr ${posttime}fr; 
   `'>
     <h2 class='heading'>Sections</h2>
+    
+
     <Timeline 
       pre
       class="pre-timeline"
@@ -65,11 +79,11 @@ const posttime = beatCount;
       :measurements="measurements"
     />
     <Timeline
-      class="timeline"
       :measurements="measurements"
       :jsong="testJSONg"
-      :playhead="{beat: 6, region: [4,12], pause: false}"
+      :playhead="{beat: 1, region: [4,12], pause: false}"
     />
+    
     <ul class="section-blocks" :style="`
       grid-template-columns: repeat(${measurements.beatCount},1fr);
     `">
@@ -81,32 +95,17 @@ const posttime = beatCount;
         :data="{ ...section, name }" 
         :style="`filter: hue-rotate(${index * 70}deg)`"
       />
-    </ul>
-  </main> -->
+    </ul> 
+    <section class='flows'>
+      <FlowList :active="[3,0,1]" :sections="jsong.playback.flow" />
+    </section>
+  </main>
 
-  <!-- <article class="flow">
-    <h2 class='heading'>Flow</h2> -->
-    <FlowList class='flows' :active="[3,0,1]" :sections="jsong.playback.flow" />
-  <!-- </article>
-  <section class="tracks">
-    <h2 class='heading'>Tracks</h2>
-    <ul v-for="track in tracks">
-      <li class="track">
-        <Volume track />
-      </li>
-    </ul>
-  </section> -->
+  
 </template>
 
 <style>
-#app {
-  /* display: grid; */
-  grid-template:
-    "nav nav" min-content
-    "time time" max-content
-    "flow tracks" auto
-    / 1fr 4fr;
-}
+
 nav {
   grid-area: nav;
 }
@@ -127,21 +126,24 @@ main {
 
 .sections {
   display: grid;
-  grid-template-areas: 
-    "pre time"
-    "title content";
+  grid-template:
+    "pre time" minmax(1rem, 8vh)
+    "title content" min-content;
 }
 .sections .heading {
-  grid-area: title;
   writing-mode: vertical-rl;
   margin-top: 0.5rem;
+}
+.sections .heading,
+.sections .flows {
+  grid-area: title;
 }
 
 .pre-timeline {
   grid-area: pre;
 }
 .timeline.timeline {
-  height: 2rem;
+  place-self: flex-end;
 }
 
 .section-blocks {
@@ -150,6 +152,7 @@ main {
 }
 .section-blocks .section {
   display:block;
+  margin: 2px;
   grid-column-start: var(--offset);
   grid-column-end: var(--end);
 }
