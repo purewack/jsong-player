@@ -4,7 +4,7 @@ import { NestedIndex } from 'jsong-audio/src/types/common';
 import Card from './styled/Card.vue';
 import { computed } from 'vue';
 const props = withDefaults(
-  defineProps<{sections: string[], active: NestedIndex, depth: number, indexDepth?: any }>(),
+  defineProps<{sections: string[], active: NestedIndex, indexDepth?: any }>(),
   {depth: 0}
 )
 </script>

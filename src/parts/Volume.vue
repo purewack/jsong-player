@@ -1,17 +1,30 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-const props = defineProps<{ track: any }>();
+const props = defineProps<{ name: string }>();
 </script>
 
 <template>
-  <button>Solo</button>
-  <button>Mute</button>
-  <span>{{ props?.track.name }}</span>
-  <input class="volume" type="range" max="1" min="0" step="0.01" />
+  <li class="track">
+    <button>Solo</button>
+    <button>Mute</button>
+    <span class="title">{{ name }}</span>
+    <input class="slider" type="range" max="1" min="0" step="0.01" />
+  </li>
 </template>
 
 <style scoped>
-.volume {
+.track {
+  display: flex;
+}
+.slider {
+  width: 70%;
+}
+.title{
+  margin-inline: auto;
+  text-transform: uppercase;
+}
+
+.slider {
   -webkit-appearance: none; /* Override default CSS styles */
   appearance: none;
   height: 16px;
@@ -23,16 +36,15 @@ const props = defineProps<{ track: any }>();
   border-radius: 0.25rem;
   border: solid lightgray 1px;
   background: none;
-  /* appearance: slider-vertical; */
 }
 
 /* Mouse-over effects */
-.volume:hover {
+.slider:hover {
   opacity: 1; /* Fully shown on mouse-over */
 }
 
 /* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
-.volume::-webkit-slider-thumb {
+.slider::-webkit-slider-thumb {
   -webkit-appearance: none; /* Override default look */
   appearance: none;
   width: 25px; /* Set a specific slider handle width */

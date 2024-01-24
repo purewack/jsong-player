@@ -1,9 +1,12 @@
 <script setup>
-defineProps({ dark: Boolean });
+defineProps({ dark: Boolean, noContain: Boolean});
 </script>
 
 <template>
-  <div :class="dark ? 'card dark' : 'card'">
+  <div :class="{
+    card: !noContain,
+    dark
+  }">
     <slot />
   </div>
 </template>

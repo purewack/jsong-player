@@ -13,7 +13,6 @@
     "meter": [4, 4],
     "metronome": ["B5","G4"],
     "metronomeDB": -8,
-    "totalMeasures": 16,
     "grain": 4,
     "map": {
       "intro" : { "region": [0, 4], "grain": 16},

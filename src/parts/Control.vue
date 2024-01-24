@@ -1,14 +1,39 @@
 <template>
   <button class="control">
-    <i v-if="type === 'play'" class="bi bi-play-fill"></i>
-    <i v-else-if="type === 'next'" class="bi bi-fast-forward-fill"></i>
-    <i v-else-if="type === 'back'" class="bi bi-stop-fill"></i>
-    <i v-else-if="type === 'volume'" class="bi bi-volume-down-fill"></i>
+    <i :class="classType"></i>
   </button>
 </template>
 
-<script setup>
-defineProps({ type: String });
+<script setup lang="ts">
+import { computed } from 'vue';
+
+const props = defineProps<{ 
+  type: string,
+  highlight?: boolean 
+}>();
+
+const classType = computed(()=>{
+  const out = (str:string)=>'bi bi-' + str + (props.highlight ? '-fill' : '')
+  switch(props.type) {
+    case 'volume':
+    return out('volume-down')
+    
+    case 'info':
+    return out('calendar3-range')
+
+    case 'back':
+    return out('stop')
+    
+    case 'next':
+    return out('fast-forward')
+
+    case 'file':
+    return out('boombox')
+
+    default: 
+    return out(props.type)
+  }
+})
 </script>
 
 <style scoped>

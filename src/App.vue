@@ -1,13 +1,10 @@
 <script setup lang="ts">
+import "bootstrap-icons/font/bootstrap-icons.css"
 import { ref, reactive, provide } from "vue";
 import _ from "lodash";
 
-import "bootstrap-icons/font/bootstrap-icons.css"
-
 import JSONg from 'jsong-audio/src'
 import testJSONg from "./test.json";
-
-import Card from "./parts/styled/Card.vue";
 
 import Logo from "./parts/Logo.vue";
 import MetaInfo from "./parts/MetaInfo.vue";
@@ -20,11 +17,35 @@ import FlowList from "./parts/FlowList.vue";
 const dark = ref(false);
 provide("theme", dark);
 
-// const playerInfo = reactive({})
-// const player = new JSONg('all');
-// player.parse('sample/audio.jsong');
+// const audioContext = new AudioContext();
+const songInfo = ref({} as any)
+const playerInfo = reactive({position: null, beat: 0, current: {}, next: undefined} as any)
+
+const player = (new JSONg(undefined, 'all'));
+player.parse('sample').then(()=>{
+  songInfo.value.meta = player.meta;
+  songInfo.value.playbackInfo = player.playbackInfo
+});
+player.addEventListener('onSectionDidStart', (ev)=>{
+  console.log(ev)
+  playerInfo.current = (ev as CustomEvent).detail
+})
 // player.addEventListener('onTransport',(ev: CustomEvent)=>{
-//     position.value = ev.detail.position
+//   playerInfo.position = ev.detail.position
+//   playerInfo.beat = ev.detail.loopBeatPosition
+// })
+// player.addEventListener('onSectionDidStart', (ev:CustomEvent)=>{
+//   const idx = ev.detail.index
+//   const flow = getNestedIndex(player.playbackFlowSections,idx)
+//   playerInfo.current = {name: flow, index: idx, ...player.playbackMap[flow]}
+// })
+// player.addEventListener('onSectionWillStart', (ev:CustomEvent)=>{
+//   const idx = ev.detail.index
+//   const flow = getNestedIndex(player.playbackFlowSections,idx)
+//   playerInfo.next = {name: flow, index: idx, ...player.playbackMap[flow]}
+// })
+// player.addEventListener('onSectionDidStart', (ev:CustomEvent)=>{
+//   playerInfo.next = undefined
 // })
 
 const jsong = ref(testJSONg);
@@ -34,7 +55,7 @@ const tracks = testJSONg.tracks.map((t) => {
 
 const beatCount = _.maxBy(
   _.values(testJSONg.playback.map),
-  (section) => section.region[1],
+  (section) => ((section.region as [number,number])[1])
 ).region[1];
 const barCount = beatCount / testJSONg.playback.meter[0];
 const measurements = {barCount, beatCount, meter: testJSONg.playback.meter as [number,number]}
@@ -43,34 +64,40 @@ console.log(measurements)
 const pretime = testJSONg.playback.meter[0] * 2;
 const posttime = beatCount;
 
+const toggles = reactive({
+  tracks: false,
+  info: false
+})
+
 </script>
 
 <template>
+  <!-- <p>{{ player.meterBeat.beat }}</p> -->
   <nav>
     <div class="controls">
-      <Control type="back" />
-      <Control type="play"/>
+      <Control type="back" @click="player.stop()"/>
+      <Control type="play" @click="player.play()"/>
       <Control type="next" />
-      <Control type="volume" />
+      <Control type="volume" :highlight="toggles.tracks" @click="toggles.tracks = !toggles.tracks" />
+      <Control type="info" :highlight="toggles.info" @click="toggles.info = !toggles.info" />
+      <Control type="file"  />
     </div>
-    <MetaInfo :jsong='jsong' />
+    <!-- <p>{{ playerInfo }}</p> -->
+    <MetaInfo :meta="songInfo.meta" :playback="songInfo.playbackInfo" />
     <Logo />
   </nav>
   
-  <section class="tracks">
+  <section v-if="toggles.tracks" class="tracks">
     <h2 class='heading'>Tracks</h2>
     <ul v-for="track in tracks">
-      <li class="track">
-        <Volume track />
-      </li>
+      <Volume v-bind="track" />
     </ul>
   </section>
 
-  <main class="sections" :style='`
-    grid-template-columns: ${pretime}fr ${posttime}fr; 
+  <main 
+  class="sections" :style='`
+    grid-template-columns: ${toggles.info ? pretime : 0}fr ${posttime}fr; 
   `'>
-    <h2 class='heading'>Sections</h2>
-    
 
     <Timeline 
       pre
@@ -81,41 +108,44 @@ const posttime = beatCount;
     <Timeline
       :measurements="measurements"
       :jsong="testJSONg"
-      :playhead="{beat: 1, region: [4,12], pause: false}"
+      :playhead="playerInfo.current ? {beat: playerInfo.beat, region: playerInfo.current.region} : undefined"
+      :next="playerInfo.next ? {beat: 0, region: playerInfo.next.region} : undefined"
     />
     
-    <ul class="section-blocks" :style="`
-      grid-template-columns: repeat(${measurements.beatCount},1fr);
-    `">
-      <MapSection 
-        v-for="(section, name, index) in jsong.playback.map"
-        :key="name"
-        :measurements="measurements"
-        :jsong="testJSONg"
-        :data="{ ...section, name }" 
-        :style="`filter: hue-rotate(${index * 70}deg)`"
-      />
-    </ul> 
-    <section class='flows'>
-      <FlowList :active="[3,0,1]" :sections="jsong.playback.flow" />
-    </section>
+    
+    <template v-if="toggles.info">
+      <h2 class='heading'>Sections</h2>
+      <ul class="section-blocks" :style="`
+        grid-template-columns: repeat(${measurements.beatCount},1fr);
+      `">
+        <MapSection 
+          v-for="(section, name, index) in jsong.playback.map"
+          :key="name"
+          :measurements="measurements"
+          :jsong="testJSONg"
+          :data="{ ...section, name }" 
+          :style="`filter: hue-rotate(${index * 70}deg)`"
+        />
+      </ul> 
+      <section class='flows'>
+        <FlowList :active="[3,0,1]" :sections="jsong.playback.flow" />
+      </section>
+    </template>
   </main>
-
-  
 </template>
+
 
 <style>
 
-nav {
-  grid-area: nav;
-}
 .controls {
   text-align: center;
+  margin-right: auto;
+}
+.logo{
+  margin-left: 1rem;
 }
 .meta {
   text-align: right;
-  margin-left: auto;
-  margin-right: 1rem;
 }
 
 
@@ -127,7 +157,7 @@ main {
 .sections {
   display: grid;
   grid-template:
-    "pre time" minmax(1rem, 8vh)
+    "pre time" 2.25rem
     "title content" min-content;
 }
 .sections .heading {
