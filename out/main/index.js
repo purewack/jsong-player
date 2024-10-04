@@ -19,7 +19,7 @@ function createWindow() {
   });
   mainWindow.on("ready-to-show", () => {
     mainWindow.show();
-    mainWindow.openDevTools({ mode: "right" });
+    mainWindow.openDevTools({ mode: "bottom" });
   });
   mainWindow.webContents.setWindowOpenHandler((details) => {
     electron.shell.openExternal(details.url);

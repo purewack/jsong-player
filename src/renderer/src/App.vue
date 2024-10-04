@@ -1,6 +1,6 @@
 <script setup>
 import "bootstrap-icons/font/bootstrap-icons.css"
-import { ref, reactive, provide } from "vue";
+import { ref, reactive, provide, onUnmounted } from "vue";
 import _ from "lodash";
 
 import JSONg from 'jsong-audio/src'
@@ -25,8 +25,8 @@ provide("theme", dark);
 const songInfo = ref({})
 const playerInfo = reactive({position: null, beat: 0, current: {}, next: undefined})
 
-const player = (new JSONg(undefined, 'all'));
-player.loadManifest("sample")
+const player = new JSONg("sample", {verbose: 'all', debug:true});
+// player.loadManifest("sample")
 
 async function load(){
   //ts-ignore
@@ -57,6 +57,26 @@ async function load(){
     songInfo.value = player.meta
   }
 }
+
+const playerDebugStats = ref('')
+setInterval(()=>{
+  const stats = {}
+  stats.timeline = player.get('transport')
+  stats.state = player.state
+  stats.players = player.get('players').map(t => {
+    return {
+      name: t.name, 
+      active: t.current === t.a ? 'A' : 'B',
+      region_a: [t.a.loopStart,t.a.loopEnd],
+      region_b: [t.b.loopStart,t.b.loopEnd],
+      state_a: t.a.state,
+      state_b: t.b.state,
+      vol_a: t.a.volume.value,
+      vol_b: t.b.volume.value,
+    }
+  })
+  playerDebugStats.value = JSON.stringify(stats,undefined,2)
+},100)
 
 // player.addEventListener("transport", (ev)=>{
 //   console.log(ev)
@@ -101,23 +121,44 @@ const toggles = reactive({
   info: false
 })
 
+onUnmounted(()=>{
+  player.stop(false) 
+})
+
 </script>
+
+<style scoped>
+.stats-debug{
+  background: gray;
+  margin: 16px;
+  padding: 16px;
+  height: 400px;
+  width: 400px;
+  overflow-y: scroll;
+}
+</style>
 
 <template>
   <!-- <p>{{ player.meterBeat.beat }}</p> -->
   <nav>
     <div class="controls">
-      <Control type="back" @click="player.stop()"/>
-      <Control type="play" @click="player.play()"/>
-      <Control type="next" @click="player.continue()"/>
-      <Control type="volume" :highlight="toggles.tracks" @click="toggles.tracks = !toggles.tracks" />
-      <Control type="info" :highlight="toggles.info" @click="toggles.info = !toggles.info" />
-      <Control type="file" @click="load" />
+      <Control icon="stop" @click="player.stop()"/>
+      <Control icon="play" @click="player.play()"/>
+      <Control icon="play" @click="player.play([2])">++</Control>
+      <Control icon="fast-forward" @click="player.continue()"/>
+      <Control icon="symmetry-vertical" @click="player.toggleMetronome()" />
+      <Control icon="volume-down" :highlight="toggles.tracks" @click="toggles.tracks = !toggles.tracks" />
+      <Control icon="calendar3-range" :highlight="toggles.info" @click="toggles.info = !toggles.info" />
+      <Control icon="file-earmark-music" @click="load" />
     </div>
     <!-- <p>{{ playerInfo }}</p>
     <MetaInfo :meta="songInfo.meta" :playback="songInfo.playbackInfo" />
     <Logo /> -->
   </nav>
+  
+  <pre class="stats-debug">
+    {{ playerDebugStats }}
+  </pre>
 <!--   
   <section v-if="toggles.tracks" class="tracks">
     <h2 class='heading'>Tracks</h2>

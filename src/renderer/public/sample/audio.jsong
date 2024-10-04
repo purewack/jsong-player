@@ -13,7 +13,6 @@
     "meter": [4, 4],
     "metronome": ["B5","G4"],
     "metronomeDB": -8,
-    "grain": 4,
     "map": {
       "intro" : [0, 4],
       "chorus" : [4, 8],
@@ -21,7 +20,7 @@
       "bridge1" : [12, 16]
     },
     "flow": [
-      "intro", 
+      {"name":"intro","grain":8}, 
       "chorus", 
       "verse1-x", 
       "bridge1" 
