@@ -17,13 +17,14 @@
       "intro" : [0, 4],
       "chorus" : [4, 8],
       "verse1" : [8, 12],
-      "bridge1" : [12, 16]
+      "bridge1" : [12, 16],
+      "introshort" : [0, 2]
     },
     "flow": [
-      {"name":"intro","grain":8}, 
-      "chorus", 
+      {"name":"intro->","grain":8}, 
+      ["chorus", 
       "verse1-x", 
-      "bridge1" 
+      "bridge1-|"]
     ],
     "filter": {
       "rolloff": -24,

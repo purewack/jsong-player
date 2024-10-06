@@ -20,7 +20,7 @@ import axios from "axios";
 const dark = ref(false);
 provide("theme", dark);
 
-
+const startPoint = ref(null)
 // const audioContext = new AudioContext();
 const songInfo = ref({})
 const playerInfo = reactive({position: null, beat: 0, current: {}, next: undefined})
@@ -33,7 +33,7 @@ async function load(){
   const api = window.api
   const result = await api.openFileDialog();
   if (result) {
-    console.log("result",result)
+    console.log("file open result",result)
 
     const audioContent = {};
     for (const src in result.content.sources) {
@@ -61,20 +61,20 @@ async function load(){
 const playerDebugStats = ref('')
 setInterval(()=>{
   const stats = {}
-  stats.timeline = player.get('transport')
   stats.state = player.state
-  stats.players = player.get('players').map(t => {
-    return {
-      name: t.name, 
-      active: t.current === t.a ? 'A' : 'B',
-      region_a: [t.a.loopStart,t.a.loopEnd],
-      region_b: [t.b.loopStart,t.b.loopEnd],
-      state_a: t.a.state,
-      state_b: t.b.state,
-      vol_a: t.a.volume.value,
-      vol_b: t.b.volume.value,
-    }
-  })
+  stats.timeline = player.getPosition()
+  // stats.players = player.get('players')?.map(t => {
+  //   return {
+  //     name: t.name, 
+  //     active: t.current === t.a ? 'A' : 'B',
+  //     region_a: [t.a.loopStart,t.a.loopEnd],
+  //     region_b: [t.b.loopStart,t.b.loopEnd],
+  //     state_a: t.a.state,
+  //     state_b: t.b.state,
+  //     vol_a: t.a.volume.value,
+  //     vol_b: t.b.volume.value,
+  //   }
+  // })
   playerDebugStats.value = JSON.stringify(stats,undefined,2)
 },100)
 
@@ -117,12 +117,12 @@ setInterval(()=>{
 // const posttime = beatCount;
 
 const toggles = reactive({
-  tracks: true,
+  tracks: false,
   info: false
 })
 
 onUnmounted(()=>{
-  player.stop(false) 
+  player.stop(false)
 })
 
 </script>
@@ -132,8 +132,8 @@ onUnmounted(()=>{
   background: gray;
   margin: 16px;
   padding: 16px;
-  height: 400px;
-  width: 400px;
+  height: 80vh;
+  width: 500px;
   overflow-y: scroll;
 }
 </style>
@@ -142,9 +142,12 @@ onUnmounted(()=>{
   <!-- <p>{{ player.meterBeat.beat }}</p> -->
   <nav>
     <div class="controls">
+      <Control icon="x-lg" @click="player.cancel()"/>
       <Control icon="stop" @click="player.stop()"/>
       <Control icon="play" @click="player.play()"/>
-      <Control icon="play" @click="player.play([2])">++</Control>
+      <Control icon="play" @click.self="player.play(JSON.parse(startPoint))">
+        <input v-model="startPoint" type="text" placeholder="[0]" class="w-16"></input>
+      </Control>
       <Control icon="fast-forward" @click="player.continue()"/>
       <Control icon="symmetry-vertical" @click="player.toggleMetronome()" />
       <Control icon="volume-down" :highlight="toggles.tracks" @click="toggles.tracks = !toggles.tracks" />

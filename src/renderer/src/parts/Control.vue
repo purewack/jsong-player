@@ -24,5 +24,13 @@ const classType = computed(()=>{
   font-size: 1.25rem;
   padding: 0.75rem;
   padding-bottom: 0.54rem;
+  
+  background-color: white;
+  color: black;
+  border: solid lightgray 1px;
+  border-radius: 4px;
+  margin: 1px;
+  min-width: 3.5rem;
+  min-height: 3.5rem;
 }
 </style>
