@@ -1,19 +1,18 @@
 @import './base.css';
 
 body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   background-image: url('./wavy-lines.svg');
   background-size: cover;
   user-select: none;
 }
 
 code {
+  margin: 2px;
   font-weight: 600;
   padding: 3px 5px;
-  border-radius: 2px;
+  border-radius: 6px;
   background-color: var(--color-background-mute);
   font-family:
     ui-monospace,
@@ -27,11 +26,11 @@ code {
 }
 
 #app {
-  display: flex;
-  align-items: center;
+  /* display: flex; */
+  /* align-items: center;
   justify-content: center;
   flex-direction: column;
-  margin-bottom: 80px;
+  margin-bottom: 80px; */
 }
 
 .logo {

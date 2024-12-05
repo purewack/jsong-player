@@ -21,7 +21,7 @@
       "introshort" : [0, 2]
     },
     "flow": [
-      {"name":"intro->","grain":0}, 
+      {"name":"intro->","grain":4}, 
       [2,"chorus",[2,"verse1-X","bridge1"]]
     ],
     "filter": {
@@ -31,7 +31,11 @@
   },
   "tracks": [
     {
-      "name": "drums"
+      "name": "drums",
+      "filter": {
+        "rolloff": -24,
+        "resonance": 2
+      }
     },
     {
       "name": "bass"

@@ -8,6 +8,7 @@
 <style>
 .logo {
   display: flex;
+  width: max-content;
   font-family: "Josefin Sans";
 }
 .logo * {
@@ -15,6 +16,9 @@
   font-weight: 100;
 }
 .logo h1 {
-  font-size: 2.5rem;
+  font-size: 3.5rem;
+}
+.logo h2{
+  font-size: 1.5rem;
 }
 </style>
