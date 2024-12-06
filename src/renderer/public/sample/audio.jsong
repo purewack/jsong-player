@@ -21,8 +21,9 @@
       "introshort" : [0, 2]
     },
     "flow": [
-      {"name":"intro->","grain":0}, 
-      [2,"chorus",[2,"verse1-X","bridge1"]]
+      {"name":"intro->","grain":2}, 
+      [2,"chorus",[2,"verse1-X","bridge1"]],
+      [3,"introshort",[2,"bridge1","chorus"]]
     ],
     "filter": {
       "rolloff": -24,

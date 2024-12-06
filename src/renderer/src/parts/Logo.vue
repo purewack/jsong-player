@@ -1,24 +1,38 @@
 <template>
   <div class="logo">
-    <h1>JSONg</h1>
-    <h2>Player</h2>
+    <div class="logo-content">
+    <h1>{{text || 'JSONg'}}</h1>
+    <h2>{{sub ? 'JSONg' : 'Player'}}</h2>
+    </div>
+    <h3 v-if="sub">{{ sub }}</h3>
   </div>
 </template>
 
+<script setup lang="ts">
+defineProps<{text?:string, sub?:string}>()
+</script>
+
 <style>
-.logo {
+.logo * {
+  font-family: "Josefin Sans";
+  font-weight: 100;
+  text-align: center;
+}
+.logo-content {
   display: flex;
   width: max-content;
-  font-family: "Josefin Sans";
 }
-.logo * {
+.logo-content * {
   margin: 0;
-  font-weight: 100;
 }
-.logo h1 {
+.logo-content h1 {
   font-size: 3.5rem;
+  line-height: 4rem;
+  transform: translateY(0.5rem);
 }
-.logo h2{
+.logo-content h2{
   font-size: 1.5rem;
+  line-height: 2rem;
+  transform: translateY(0.5rem);
 }
 </style>

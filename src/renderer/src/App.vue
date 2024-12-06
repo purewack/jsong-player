@@ -11,27 +11,40 @@ import Timeline from "./parts/Timeline.vue";
 import MapSection from "./parts/MapSection.vue";
 import FlowList from "./parts/FlowList.vue";
 import { ClickEvent, ParseEvent, StateEvent } from "jsong-audio/src/types/events";
-import { PlayerState } from "jsong-audio/src/types/player";
+import { PlayerIndex, PlayerManifest, PlayerState } from "jsong-audio/src/types/player";
 import { JSONgManifestFile } from "../../../../jsong-audio/src/types/jsong";
 import Playhead from "./parts/Playhead.vue";
 import TimingGrain from "./parts/TimingGrain.vue";
 import { Tone } from "tone/build/esm/core/Tone";
 import { gainToDb, Volume } from "tone";
-import Countdown from "./parts/Countdown.vue";
+import SectionBlock from "./parts/SectionBlock.vue";
 
 
 const dark = ref(false);
 provide("theme", dark);
 
 // const audioContext = new AudioContext();
-const songInfo = ref({})
+const songInfo = ref<PlayerManifest>()
 const playerInfo = reactive({position: null, beat: 0, current: {}, next: undefined})
 const click = ref([0,0])
 const transport = ref([0,0])
-const section = ref()
-const countdown = ref()
+const sections = ref()
+
+const loops = ref()
+const indexes = ref<{
+  current: PlayerIndex,
+  next?: PlayerIndex
+}>({current:[], next:undefined})
+
+
+const toggles = reactive({
+  tracks: false,
+  sections: false,
+  info: false
+})
+
+
 const playing = ref(false)
-const regions = ref<[number,number][]>([])
 const timing = ref<{
     grains: number;
     totalTicks: number;
@@ -46,17 +59,29 @@ const timing = ref<{
     countdown: number | null;
 }>({
   grains: 0,
-  totalMeasures: 0,
-  totalTicks: 0,
+  totalMeasures: 16,
+  totalTicks: 64,
   ticks: 0,
   beat:0,
   offset: 0,
-  meter: [1,1],
+  meter: [4,4],
   meterBeats: 0,
   nextOffset: null,
   nextTicks: null,
   countdown: 0
 })
+
+
+const injectStartPoint = ref('')
+function skipTo(){
+  try{
+    if(injectStartPoint.value === JSON.stringify(player.current.index)) 
+      return
+    const s = JSON.parse(injectStartPoint.value)
+    player.continue(s)
+  }
+  catch{}
+}
 
 
 function makeFlow(m: JSONgManifestFile){
@@ -69,7 +94,7 @@ function makeFlow(m: JSONgManifestFile){
   })
   timing.value.totalMeasures = end
   timing.value.totalTicks = end * player.timingInfo.meter[0]
-  regions.value = f
+  sections.value = player.sections
 }
 
 
@@ -78,21 +103,18 @@ const player = new JSONg();
 player.addEventListener('state', (ev: StateEvent)=>{
   if(ev.type === 'state'){
     playing.value = !(ev.stateNow === 'stopped' || ev.stateNow === null)
-
   }
 })
 
 player.addEventListener('click',(ev: ClickEvent)=>{
   click.value = ev.current
-  timing.value.countdown = player.getPosition().countdown;
 })
 player.addEventListener('transport',(ev)=>{
   transport.value = ev.progress
-  countdown.value = ev.countdown
+  timing.value.countdown = ev.countdown || 0;
 })
 player.addEventListener('change', ev=>{
   if(!ev.to) return
-  section.value = ev.to
   // pending.value = null
   const key = 'key_'+ev.to?.name + ev.from?.name
   pending.value = pending.value.filter((v)=>v.key !== key)
@@ -101,6 +123,16 @@ player.addEventListener('change', ev=>{
   timing.value.nextOffset = null
   
   timing.value.grains = (ev.to.region[1] - ev.to.region[0]) / (ev.to.grain/player.timingInfo.meter[0])
+
+  sections.value = structuredClone(player.sections)
+  loops.value = []
+
+  injectStartPoint.value = JSON.stringify(ev.to?.index || [])
+ 
+  indexes.value = {
+    current: ev.to?.index || [],
+    next: undefined
+  }
 })
 
 const pending = ref<any[]>([])
@@ -108,14 +140,24 @@ player.addEventListener('queue', (ev)=>{
   const key = 'key_'+ev.to?.name + ev.from?.name
   pending.value.push({key, to: ev.to, from: ev.from})
   console.log("queue",ev)
+  try{
+    if(ev.to){
+      timing.value.nextTicks = (ev.to.region[1] - ev.to.region[0]) * timing.value.meterBeats
+      timing.value.nextOffset = ev.to.region[0] * timing.value.meterBeats
+    }
 
-  if(ev.to){
-    timing.value.nextTicks = (ev.to.region[1] - ev.to.region[0]) * timing.value.meterBeats
-    timing.value.nextOffset = ev.to.region[0] * timing.value.meterBeats
+    if(!ev.breakout)
+    loops.value = structuredClone(player.getProgression().increments || null)
+
+    indexes.value = {
+      current: ev.from?.index || [],
+      next: ev.to?.index
+    }
   }
-
-  timing.value.countdown = player.getPosition().countdown
+  catch{}
+  
 })
+
 player.addEventListener('cancel', (ev)=>{
   // pending.value = null
   const key = 'key_'+ev.to?.name + ev.from?.name
@@ -124,7 +166,14 @@ player.addEventListener('cancel', (ev)=>{
 
   timing.value.nextTicks = null
   timing.value.nextOffset = null
+  loops.value = []
+
+  indexes.value = {
+    current: ev.from?.index || [],
+    next: undefined
+  }
 })
+
 player.addEventListener('transport',(ev)=>{
   if(!ev.progress) return
   timing.value.beat = ev.progress[0]
@@ -147,12 +196,14 @@ async function loadFile(file,audioContent?,autoplay = true){
     timing.value.meterBeats = timing.value.meter[0]
     makeFlow(m.manifest)
     console.log(player,m)
-    volumes.value = player.tracksList.reduce((acc:{[key:string]: number},t) =>{
+    volumes.value = player.trackList.reduce((acc:{[key:string]: number},t) =>{
       acc[t.name] = 1
       return acc
     },{})
+    // mute.value = player.trackList.map(t=>t.name)
     mute.value = []
     solo.value = ''
+    toggles.sections = true;
   }
 }
 
@@ -186,31 +237,26 @@ async function loadFromFileBrowser(){
   }
 }
 
-const toggles = reactive({
-  tracks: false,
-  info: false
-})
-
 
 const solo = ref('')
 const mute = ref<string[]>([])
 
 watch(mute,(mutes)=>{
-  if(!player.tracksList) return
-  player.tracksList.forEach(t=>{
+  if(!player.trackList) return
+  player.trackList.forEach(t=>{
     player.trackVolumeOutput[t.name].volume.value = 0;
     if(mutes.includes(t.name)) player.trackVolumeOutput[t.name].volume.value = -200
   })
-  if(mutes.includes(solo.value) || mutes.length < player.tracksList.length -1)
+  if(mutes.includes(solo.value) || mutes.length < player.trackList.length -1)
     solo.value = ''
 })
 
 watch(solo,(toSolo)=>{
-  if(!player.tracksList) return
-  if(!toSolo && mute.value.length === player.tracksList.length-1) 
+  if(!player.trackList) return
+  if(!toSolo && mute.value.length === player.trackList.length-1) 
     mute.value = []
   else if(toSolo)
-    mute.value = player.tracksList.map(t => t.name !== toSolo ? t.name : undefined).filter(a=>a!==undefined)
+    mute.value = player.trackList.map(t => t.name !== toSolo ? t.name : undefined).filter(a=>a!==undefined)
 },{immediate:true})
 
 const volumes = ref<{[key:string]:number}>({})
@@ -226,7 +272,7 @@ onUnmounted(()=>{
 })
 
 onMounted(async ()=>{
-  await loadFile("sample")
+  // await loadFile("sample")
   
 })
 
@@ -246,10 +292,9 @@ onMounted(async ()=>{
 
 <template>
 
-  <Logo></Logo>
 
-  <nav class="controls max-w-screen flex items-center">
-    <div>
+  <nav class="controls max-w-screen flex items-center justify-between">
+    <div class="flex">
     <Control v-if="!playing" icon="play" @click="begin"/>
     <Control v-else icon="stop" @click="player.state === 'stopping' ? player.stop(false) : player.stop()"/>
     
@@ -257,15 +302,18 @@ onMounted(async ()=>{
     <Control v-else icon="fast-forward" @click="player.continue()"/>
     
     <Control icon="skip-forward" @click="player.continue(true)"></Control>
-    <!-- <Control icon="fast-forward" @click.self="player.continue(JSON.parse(startPoint!))">
-      <input v-model="startPoint" type="text" placeholder="[0]" class="w-16"></input>
-    </Control> -->
+    <Control @click="skipTo" class="inject-start flex">
+      <input @submit.prevent="skipTo" v-model="injectStartPoint" type="text" placeholder="[0]" class=" w-16 h-8 bg-transparent text-center text-sm font-mono"></input>
+    </Control>
     </div>
 
-    <div class="ml-auto h-min">
+
+    <Logo class="mx-auto " :text="songInfo?.meta.title" :sub="songInfo?.meta &&('by' + songInfo?.meta.author)"></Logo>
+
+    <div class="h-min">
     <Control icon="symmetry-vertical" :small="true" @click="player.toggleMetronome()" />
     <Control icon="volume-down" :small="true" :highlight="toggles.tracks" @click="toggles.tracks = !toggles.tracks" />
-    <Control icon="calendar3-range" :small="true" :highlight="toggles.info" @click="toggles.info = !toggles.info" />
+    <Control icon="calendar3-range" :small="true" :highlight="toggles.sections" @click="toggles.sections = !toggles.sections" />
     <Control icon="file-earmark-music" :small="true" @click="loadFromFileBrowser" />
     </div>
     <!-- <p>{{ playerInfo }}</p>
@@ -274,18 +322,20 @@ onMounted(async ()=>{
   </nav>
 
 
-  <section class="w-screen">
-    <Timeline 
+  <section class="w-screen my-4">
+    <!-- <Timeline 
       :region=[-2,0]
       :meter="timing.meter"
       height="3rem"
       :width="`${100 * (2 / (timing.totalMeasures+2))}%`"
-    />
+      :width="`${100 * (timing.totalMeasures / (timing.totalMeasures+2))}%`"
+      
+    /> -->
     <Timeline 
       :region="[0,timing.totalMeasures]"
       :meter="timing.meter"
-      :width="`${100 * (timing.totalMeasures / (timing.totalMeasures+2))}%`"
       height="3rem"
+      width="100vw"
     >
       <TimingGrain v-for="g in timing.grains"
         :ticks="timing.ticks / timing.grains"
@@ -295,6 +345,7 @@ onMounted(async ()=>{
         stroke="none"
         style="mix-blend-mode: difference"
       ></TimingGrain>
+
       <Playhead 
         :offset="timing.offset"
         :ticks="timing.ticks"
@@ -304,6 +355,7 @@ onMounted(async ()=>{
         class="current"
         :class="player.state"
       />
+
       <Playhead v-if="timing.nextTicks !== null"
         :offset="timing.nextOffset!"
         :ticks="timing.nextTicks"
@@ -316,10 +368,10 @@ onMounted(async ()=>{
       
     </Timeline> 
   </section>
-  
+
   <h1 class='heading' v-if="toggles.tracks">Tracks</h1>
   <ul v-if="toggles.tracks" class="tracks">
-    <li v-for="track in player.tracksList" :key="track.name" class="track" :class="track.name">
+    <li v-for="track in player.trackList" :key="track.name" class="track" :class="track.name">
       <div class="track-title border h-9 flex flex-row-reverse items-center">
         <span class="w-min px-1">{{ track.name }}</span>
       </div>
@@ -338,24 +390,23 @@ onMounted(async ()=>{
     </li>
   </ul>
 
+  <h1 class='heading'v-if="toggles.sections" >Sections</h1>
+  <SectionBlock v-if="sections && toggles.sections" :sections="sections" :loops="loops" :indexes="indexes"/>
 
 </template>
 
 
 <style>
-.code-debug {
-  display: block;
-}
+/* 
+:root {
+  --color-text: #111;
+  --color-background: ivory;
+} */
 
 main {
   height: max-content;
   grid-area: time;
 }
-
-/* :root {
-  --color-text: #111;
-  --color-background: ivory;
-} */
 
 
 .heading{
@@ -372,6 +423,12 @@ main {
   justify-content: space-between; */
 }
 
+.inject-start input:focus-visible{
+  outline: none !important;
+}
+.inject-start:has(input:focus-visible) {
+  border-color: lightseagreen;
+}
 
 .sections {
   display: grid;

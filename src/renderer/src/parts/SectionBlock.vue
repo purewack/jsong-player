@@ -1,13 +1,183 @@
 <template>
-<li></li>
+    <div class="group" :class="[depth === 0 && 'root',willLoop && 'will-loop']">
+        <div class="group-info">
+            <!-- <code >{{ index }}</code> -->
+            <code class="loop-counter" >{{ sections.loopCurrent }} / {{ sections.loopLimit === Infinity ? '∞' : sections.loopLimit  }}</code>
+        </div>
+        <ol class="data" >
+            <!-- <span class="loop-symbol start"></span> -->
+            <li v-for="section in currentIndexes" class="entry">
+                <template v-if="section.hasOwnProperty('name')"  >
+                    <code class="section " :class="[isCurrent(section) && 'current', isNext(section) && 'next']">
+                        <h1>{{ (section as PlayerSection).name }}</h1>
+                        Index: <span class="whitespace-nowrap">{{ (section as PlayerSection).index }}</span>
+                        Region: <span class="whitespace-nowrap"> {{ (section as PlayerSection).region }}</span>
+                    </code>
+                </template>
+                <SectionBlock v-else :depth="depth + 1" :loops="loops" :sections="(section as PlayerSectionGroup)" :indexes="indexes"/>
+            </li> 
+            <!-- <span class="loop-symbol end"></span>  -->
+        </ol>
+    </div>
 </template>
 
-<script setup>
-import { computed } from 'vue';
+<script setup lang="ts">
+import { PlayerSectionGroup, PlayerSection, PlayerIndex } from 'jsong-audio/src/types/player';
+import { computed, ref } from 'vue';
 
-const props = defineProps({entry: Object});
+const index = ref<PlayerIndex>([])
 
-const entry = computed(()=>{
-    return
+const {sections, loops, indexes, depth = 0} = defineProps<{
+    sections: PlayerSectionGroup, 
+    loops?:PlayerIndex[], 
+    indexes: {current: PlayerIndex, next?: PlayerIndex}
+    depth?: number}>();
+
+function arraysEqual(a, b) {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  if (a.length !== b.length) return false;
+
+//   a = a.sort((_a,_b)=>_a>_b)
+//   b = b.sort((_a,_b)=>_a>_b)
+
+  for (var i = 0; i < a.length; ++i) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+const deepSearchRoot = (sec)=>{
+    if(sec.hasOwnProperty('name')) return sec.index
+    return deepSearchRoot(sec[0])
+}
+
+const currentIndexes = computed<(PlayerSectionGroup | PlayerSection)[]>(()=>{
+    const a = Array(sections.sectionCount)
+    for(let i=0; i<a.length; i++){
+        a[i] = sections[i]
+    }
+
+    index.value = [...deepSearchRoot(sections[0]).slice(0,-1)]
+    return a
 })
+
+const isNext = (section)=>{
+    return arraysEqual((section as PlayerSection).index,indexes.next)
+}
+const isCurrent = (section)=>{
+    return arraysEqual((section as PlayerSection).index,indexes.current)
+}
+
+const willLoop = computed(()=>{
+    const ii = [...deepSearchRoot(sections[0]).slice(0,-1)]
+    let l = false
+    if(loops) loops.forEach((loop)=>{
+        if(arraysEqual(loop,ii)) l = true;
+    })
+    return l
+})
+
 </script>
+
+<style lang="css" scoped>
+.group{
+    display: flex;
+    flex-direction: column;
+    /* align-items: end; */
+    margin-left: 4px;
+    margin-top: 4px;
+    overflow: auto;
+}
+
+.group-info > *{
+    display:block;
+    border-radius: 2px;
+}
+
+.loop-counter {
+    /* writing-mode: vertical-rl;
+    text-orientation: mixed; */
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    align-self: stretch; 
+    /* border: solid currentColor 1px; */
+    background-color: transparent
+}
+.loop-counter{
+    border-bottom: solid lightblue 4px;
+}
+.group.will-loop .loop-counter{
+    border-color: lightsalmon;
+}
+
+/* .loop-counter.loop{
+    background-color: red;
+} */
+.data {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: end;
+    border-radius: 4px;
+}
+.entry {
+    flex-grow: 1;
+    /* display: flex;
+    flex-direction: row; */
+    margin-left: 4px;
+    margin-top: 4px;
+}
+.section {
+    /* margin-inline: 16px; */
+    /* border: solid currentColor 1px; */
+    border-radius: 2px;
+    display: grid;
+    place-content: center;
+    background-color: transparent;
+    border: solid 1px;
+    border-color: currentColor;
+}
+
+.section.current {
+    border-color: lightgreen;
+}
+.section.next {
+    border-color: lightsalmon;
+}
+
+.loop-symbol {
+    background: currentColor;
+    width:4px;
+    height:3rem;
+    margin-block:4px;
+    position: relative;
+}
+
+.loop-symbol.start {
+    margin-right: 16px;
+}
+.loop-symbol.end {
+    margin-left: 16px;
+}
+.loop-symbol::before,
+.loop-symbol::after{
+    content: '';
+    position: absolute;
+    width:4px;
+    height:4px;
+    background:inherit;
+    right: -8px;
+}
+.loop-symbol::before{
+    top: calc(50% - 8px);
+}
+.loop-symbol::after{
+    top: calc(50% + 8px);
+}
+.loop-symbol.end::before,
+.loop-symbol.end::after {
+    left: -8px;
+}
+</style>
