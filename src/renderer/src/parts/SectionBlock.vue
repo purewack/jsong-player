@@ -8,13 +8,15 @@
             <!-- <span class="loop-symbol start"></span> -->
             <li v-for="section in currentIndexes" class="entry">
                 <template v-if="section.hasOwnProperty('name')"  >
-                    <code class="section " :class="[isCurrent(section) && 'current', isNext(section) && 'next']">
-                        <h1>{{ (section as PlayerSection).name }}</h1>
-                        Index: <span class="whitespace-nowrap">{{ (section as PlayerSection).index }}</span>
-                        Region: <span class="whitespace-nowrap"> {{ (section as PlayerSection).region }}</span>
+                    <code @click="clickSection?.((section as PlayerSection).index )" class="section " :class="[isCurrent(section) && 'current', isNext(section) && 'next']">
+                        <span class="whitespace-nowrap"><b>{{ (section as PlayerSection).name }}</b>{{ (section as PlayerSection).index }} </span>
+                        <hr/>
+                        <span class="whitespace-nowrap">Region:{{ (section as PlayerSection).region }}</span>
+                        <span class="whitespace-nowrap">Fade:{{ transitionFlag(section as PlayerSection) }} {{ (section as PlayerSection).once ? 'Once' : '' }}</span>
+                        <span class="whitespace-nowrap">Next:{{ (section as PlayerSection).next }}</span>
                     </code>
                 </template>
-                <SectionBlock v-else :depth="depth + 1" :loops="loops" :sections="(section as PlayerSectionGroup)" :indexes="indexes"/>
+                <SectionBlock v-else :clickSection="clickSection" :depth="depth + 1" :loops="loops" :sections="(section as PlayerSectionGroup)" :indexes="indexes"/>
             </li> 
             <!-- <span class="loop-symbol end"></span>  -->
         </ol>
@@ -30,8 +32,20 @@ const index = ref<PlayerIndex>([])
 const {sections, loops, indexes, depth = 0} = defineProps<{
     sections: PlayerSectionGroup, 
     loops?:PlayerIndex[], 
-    indexes: {current: PlayerIndex, next?: PlayerIndex}
-    depth?: number}>();
+    indexes: {current: PlayerIndex, next?: PlayerIndex},
+    depth?: number,
+    clickSection?: (index: PlayerIndex)=>void
+}>();
+
+function transitionFlag(section:PlayerSection){
+    const flag = Array(section.transition.length).fill('')
+    section.transition.forEach((t,i)=>{
+        if(t.duration && t.type === 'fade') flag[i] = 'X'
+        else if(t.duration === 0 && t.type === 'fade') flag[i] = '|'
+        else flag[i] = '#'
+    })
+    return flag.join('')
+}
 
 function arraysEqual(a, b) {
   if (a === b) return true;
@@ -87,7 +101,7 @@ const willLoop = computed(()=>{
     /* align-items: end; */
     margin-left: 4px;
     margin-top: 4px;
-    overflow: auto;
+    width: max-content;
 }
 
 .group-info > *{

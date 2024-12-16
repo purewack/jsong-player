@@ -16,8 +16,9 @@ import { JSONgManifestFile } from "../../../../jsong-audio/src/types/jsong";
 import Playhead from "./parts/Playhead.vue";
 import TimingGrain from "./parts/TimingGrain.vue";
 import { Tone } from "tone/build/esm/core/Tone";
-import { gainToDb, Volume } from "tone";
+import { gainToDb, Time, Volume } from "tone";
 import SectionBlock from "./parts/SectionBlock.vue";
+import RecursiveLI from "./parts/RecursiveLI.vue";
 
 
 const dark = ref(false);
@@ -57,6 +58,7 @@ const timing = ref<{
     nextOffset: null | number;
     nextTicks: null | number;
     countdown: number | null;
+    countdownTime: number | null;
 }>({
   grains: 0,
   totalMeasures: 16,
@@ -68,7 +70,8 @@ const timing = ref<{
   meterBeats: 0,
   nextOffset: null,
   nextTicks: null,
-  countdown: 0
+  countdown: 0,
+  countdownTime: 0
 })
 
 
@@ -112,6 +115,7 @@ player.addEventListener('click',(ev: ClickEvent)=>{
 player.addEventListener('transport',(ev)=>{
   transport.value = ev.progress
   timing.value.countdown = ev.countdown || 0;
+  timing.value.countdownTime = player.beatsCountToSeconds(ev.countdown || 0);
 })
 player.addEventListener('change', ev=>{
   if(!ev.to) return
@@ -204,6 +208,8 @@ async function loadFile(file,audioContent?,autoplay = true){
     mute.value = []
     solo.value = ''
     toggles.sections = true;
+    toggles.tracks = true;
+    toggles.info = true;
   }
 }
 
@@ -298,7 +304,7 @@ onMounted(async ()=>{
     <Control v-if="!playing" icon="play" @click="begin"/>
     <Control v-else icon="stop" @click="player.state === 'stopping' ? player.stop(false) : player.stop()"/>
     
-    <Control v-if="pending.length" class="animate-pulse text-yellow-400" @click="player.cancel()">{{timing.countdown}}</Control>
+    <Control v-if="timing.countdown" class="animate-pulse text-yellow-400" @click="player.cancel()">{{timing.countdown}}</Control>
     <Control v-else icon="fast-forward" @click="player.continue()"/>
     
     <Control icon="skip-forward" @click="player.continue(true)"></Control>
@@ -308,9 +314,9 @@ onMounted(async ()=>{
     </div>
 
 
-    <Logo class="mx-auto " :text="songInfo?.meta.title" :sub="songInfo?.meta &&('by' + songInfo?.meta.author)"></Logo>
+    <Logo class="mx-auto " @click="toggles.info = !toggles.info" :text="songInfo?.meta.title" :sub="songInfo?.meta &&('by' + songInfo?.meta.author)"></Logo>
 
-    <div class="h-min">
+    <div class="h-min flex justify-evenly flex-wrap">
     <Control icon="symmetry-vertical" :small="true" @click="player.toggleMetronome()" />
     <Control icon="volume-down" :small="true" :highlight="toggles.tracks" @click="toggles.tracks = !toggles.tracks" />
     <Control icon="calendar3-range" :small="true" :highlight="toggles.sections" @click="toggles.sections = !toggles.sections" />
@@ -369,6 +375,11 @@ onMounted(async ()=>{
     </Timeline> 
   </section>
 
+  <h1 class='heading' v-if="toggles.sections" >Sections</h1>
+  <section class="overflow-y-scroll max-w-screen ">
+  <SectionBlock v-if="sections && toggles.sections" :clickSection="(index)=>{player.cancel(); player.continue(index)}" class="!mx-auto" :sections="sections" :loops="loops" :indexes="indexes"/>
+  </section>
+
   <h1 class='heading' v-if="toggles.tracks">Tracks</h1>
   <ul v-if="toggles.tracks" class="tracks">
     <li v-for="track in player.trackList" :key="track.name" class="track" :class="track.name">
@@ -390,9 +401,45 @@ onMounted(async ()=>{
     </li>
   </ul>
 
-  <h1 class='heading'v-if="toggles.sections" >Sections</h1>
-  <SectionBlock v-if="sections && toggles.sections" :sections="sections" :loops="loops" :indexes="indexes"/>
 
+  <h1 class='heading' v-if="songInfo && toggles.info">Info</h1>
+  <section v-if="songInfo && toggles.info" class="flex flex-wrap justify-between gap-4 p-4">
+    <div class="flex flex-col">
+      <h2 class="heading-sm">Meta</h2>
+      <p>Created: {{(new Date(songInfo.meta.created * 1000)).toDateString()}} ({{songInfo.meta.created}})</p>
+      <p>Version: {{songInfo.meta.version}}</p>
+    </div>
+
+    <div class="flex flex-col">
+      <h2 class="heading-sm">Timing</h2>
+      <b>Next event in {{parseFloat(timing.countdownTime || 0).toFixed(4)}}s</b>
+      <p>BMP: {{player.timingInfo.bpm}} @ {{player.timingInfo.meter[0]}}/{{player.timingInfo.meter[1]}}  </p>
+      <p>Beat Duration: {{player.timingInfo.beatDuration}}s</p>
+      <p>Grain(default): {{player.timingInfo.grain}} beats</p>
+    </div>  
+    
+    <div class="flex flex-col">
+      <h2 class="heading-sm">Regions</h2>
+      <ol>
+        <li class="flex justify-between font-mono" v-for="[k,v] of Object.entries(songInfo.manifest.playback.map)" :key="k+v">
+          <p>[{{k}}]:</p>
+          <p> {{v}}</p>
+        </li>
+      </ol>
+    </div>  
+
+    <div class="flex flex-col">
+      <h2 class="heading-sm">Flow</h2>
+      <ol>
+        <RecursiveLI groupClass="ml-4" elementClass="list-item list-inside list-decimal font-mono" :items="songInfo.manifest.playback.flow"/>
+      </ol>
+    </div>  
+  </section>
+
+  <details v-if="songInfo && toggles.info" class="p-4">
+    <summary class="bg-blue-500 text-blue-100 rounded-sm m-[1px]">See Manifest</summary>
+    <code class="text-white block max-h-[50vh] overflow-y-scroll"><pre>{{songInfo.manifest}}</pre></code>
+  </details>
 </template>
 
 
@@ -416,6 +463,14 @@ main {
   line-height: 3rem;
   margin-top: 1rem;
 }
+.heading-sm{
+  font-weight: 300;
+  font-size: 1.5rem;
+  font-family: 'Josefin Sans';
+  line-height: 1.5rem;
+  margin-top: 0.2rem;
+}
+
 
 .controls > * {
   /* display: flex;
@@ -526,6 +581,27 @@ main {
 
 .track-slider:hover::-webkit-slider-thumb{
   opacity: 1; /* Fully shown on mouse-over */
+}
+
+/* width */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: transparent; 
+}
+ 
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #555; 
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: currentColor; 
 }
 
 </style>
