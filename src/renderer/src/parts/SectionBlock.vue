@@ -9,14 +9,16 @@
             <li v-for="section in currentIndexes" class="entry">
                 <template v-if="section.hasOwnProperty('name')"  >
                     <code @click="clickSection?.((section as PlayerSection).index )" class="section " :class="[isCurrent(section) && 'current', isNext(section) && 'next']">
-                        <span class="whitespace-nowrap"><b>{{ (section as PlayerSection).name }}</b>{{ (section as PlayerSection).index }} </span>
+                        <span class="whitespace-nowrap"> <b>{{ (section as PlayerSection).name }}</b> {{ (section as PlayerSection).index }} </span>
                         <hr/>
-                        <span class="whitespace-nowrap">Region:{{ (section as PlayerSection).region }}</span>
-                        <span class="whitespace-nowrap">Fade:{{ transitionFlag(section as PlayerSection) }} {{ (section as PlayerSection).once ? 'Once' : '' }}</span>
-                        <span class="whitespace-nowrap">Next:{{ (section as PlayerSection).next }}</span>
+                        <span class="whitespace-nowrap">Region: {{ (section as PlayerSection).region }} {{ (section as PlayerSection).once ? '(Once)' : '' }}</span>
+                        <span class="whitespace-nowrap">Grain: {{ (section as PlayerSection).grain }}b</span>
+                        <span class="whitespace-nowrap">Fade: {{ transitionFlag(section as PlayerSection) }}</span>
+                        <span class="whitespace-nowrap">Next: {{ (section as PlayerSection).next }}</span>
                     </code>
+                    <button class="border text-center w-full rounded-sm" @click="injectSection?.((section as PlayerSection).index)">Inject</button>
                 </template>
-                <SectionBlock v-else :clickSection="clickSection" :depth="depth + 1" :loops="loops" :sections="(section as PlayerSectionGroup)" :indexes="indexes"/>
+                <SectionBlock v-else :clickSection="clickSection" :injectSection="injectSection" :depth="depth + 1" :loops="loops" :sections="(section as PlayerSectionGroup)" :indexes="indexes"/>
             </li> 
             <!-- <span class="loop-symbol end"></span>  -->
         </ol>
@@ -34,7 +36,8 @@ const {sections, loops, indexes, depth = 0} = defineProps<{
     loops?:PlayerIndex[], 
     indexes: {current: PlayerIndex, next?: PlayerIndex},
     depth?: number,
-    clickSection?: (index: PlayerIndex)=>void
+    clickSection?: (index: PlayerIndex)=>void,
+    injectSection?: (index: PlayerIndex)=>void,
 }>();
 
 function transitionFlag(section:PlayerSection){
@@ -44,7 +47,7 @@ function transitionFlag(section:PlayerSection){
         else if(t.duration === 0 && t.type === 'fade') flag[i] = '|'
         else flag[i] = '#'
     })
-    return flag.join('')
+    return (section.transitionSync ? '@ ' : '') + flag.join('-')
 }
 
 function arraysEqual(a, b) {

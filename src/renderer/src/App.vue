@@ -1,79 +1,54 @@
 <script setup lang='ts'>
 import "bootstrap-icons/font/bootstrap-icons.css"
-import { ref, reactive, provide, onUnmounted, onMounted, watchEffect, watch } from "vue";
+import { ref, reactive, provide, onUnmounted, watch } from "vue";
 
 import JSONg from 'jsong-audio/src'
+import { ClickEvent, StateEvent, TransportEvent } from "jsong-audio/src/types/events";
+import { PlayerIndex, PlayerManifest } from "jsong-audio/src/types/player";
+import { JSONgManifestFile } from "jsong-audio/src/types/jsong";
 
 import Logo from "./parts/Logo.vue";
-import MetaInfo from "./parts/MetaInfo.vue";
 import Control from "./parts/Control.vue";
 import Timeline from "./parts/Timeline.vue";
-import MapSection from "./parts/MapSection.vue";
-import FlowList from "./parts/FlowList.vue";
-import { ClickEvent, ParseEvent, StateEvent } from "jsong-audio/src/types/events";
-import { PlayerIndex, PlayerManifest, PlayerState } from "jsong-audio/src/types/player";
-import { JSONgManifestFile } from "../../../../jsong-audio/src/types/jsong";
 import Playhead from "./parts/Playhead.vue";
 import TimingGrain from "./parts/TimingGrain.vue";
-import { Tone } from "tone/build/esm/core/Tone";
-import { gainToDb, Time, Volume } from "tone";
 import SectionBlock from "./parts/SectionBlock.vue";
 import RecursiveLI from "./parts/RecursiveLI.vue";
 
+import { gainToDb } from "tone";
 
-const dark = ref(false);
-provide("theme", dark);
 
-// const audioContext = new AudioContext();
+
+
+
+const player = new JSONg();
+const playing = ref(false);
+
 const songInfo = ref<PlayerManifest>()
-const playerInfo = reactive({position: null, beat: 0, current: {}, next: undefined})
-const click = ref([0,0])
-const transport = ref([0,0])
-const sections = ref()
+const dynamicInfo = reactive({
+  click: 0,
+  sectionBeat: 0,
 
-const loops = ref()
-const indexes = ref<{
-  current: PlayerIndex,
-  next?: PlayerIndex
-}>({current:[], next:undefined})
-
-
-const toggles = reactive({
-  tracks: false,
-  sections: false,
-  info: false
+  countdown: -1,
+  countdownTime: -1,
 })
-
-
-const playing = ref(false)
-const timing = ref<{
-    grains: number;
-    totalTicks: number;
-    totalMeasures: number;
-    ticks: number;
-    beat: number;
-    offset: number;
-    meter: [number, number];
-    meterBeats: number;
-    nextOffset: null | number;
-    nextTicks: null | number;
-    countdown: number | null;
-    countdownTime: number | null;
-}>({
-  grains: 0,
-  totalMeasures: 16,
-  totalTicks: 64,
-  ticks: 0,
-  beat:0,
-  offset: 0,
-  meter: [4,4],
+const timelineInfo = ref({
+  meter: [0,0],
   meterBeats: 0,
-  nextOffset: null,
-  nextTicks: null,
-  countdown: 0,
-  countdownTime: 0
-})
+  
+  currentOffset: -1,
+  nextOffset: -1,
+  
+  sectionLen:0,
+  nextSectionLen:0,
 
+  songTotalTicks: 0,
+  songTotalMeasures: 0,
+
+  grains: 0,
+  bpm: 0,
+  beatDuration: 0,
+})
 
 const injectStartPoint = ref('')
 function skipTo(){
@@ -86,6 +61,13 @@ function skipTo(){
   catch{}
 }
 
+const loopIncrements = ref()
+const queueIndexes = ref<{
+  current: PlayerIndex,
+  next?: PlayerIndex
+}>({current:[], next:undefined})
+
+const flowSections = ref()
 
 function makeFlow(m: JSONgManifestFile){
   let end = 0;
@@ -95,13 +77,12 @@ function makeFlow(m: JSONgManifestFile){
     end = Math.max(...[end,...r])
     f.push(r)
   })
-  timing.value.totalMeasures = end
-  timing.value.totalTicks = end * player.timingInfo.meter[0]
-  sections.value = player.sections
+  timelineInfo.value.songTotalMeasures = end
+  timelineInfo.value.songTotalTicks = end * player.timingInfo.meter[0]
+  flowSections.value = player.sections
 }
 
 
-const player = new JSONg();
 
 player.addEventListener('state', (ev: StateEvent)=>{
   if(ev.type === 'state'){
@@ -109,31 +90,27 @@ player.addEventListener('state', (ev: StateEvent)=>{
   }
 })
 
-player.addEventListener('click',(ev: ClickEvent)=>{
-  click.value = ev.current
-})
-player.addEventListener('transport',(ev)=>{
-  transport.value = ev.progress
-  timing.value.countdown = ev.countdown || 0;
-  timing.value.countdownTime = player.beatsCountToSeconds(ev.countdown || 0);
-})
+
+
 player.addEventListener('change', ev=>{
   if(!ev.to) return
-  // pending.value = null
+  // console.log("change",ev)
   const key = 'key_'+ev.to?.name + ev.from?.name
   pending.value = pending.value.filter((v)=>v.key !== key)
 
-  timing.value.nextTicks = null
-  timing.value.nextOffset = null
-  
-  timing.value.grains = (ev.to.region[1] - ev.to.region[0]) / (ev.to.grain/player.timingInfo.meter[0])
+  const regionMeasures = (ev.to.region[1] - ev.to.region[0])
+  timelineInfo.value.currentOffset = ev.to.region[0] * timelineInfo.value.meterBeats
+  timelineInfo.value.sectionLen = regionMeasures * timelineInfo.value.meterBeats
+  timelineInfo.value.grains = regionMeasures / (ev.to.grain/player.timingInfo.meter[0])
+  timelineInfo.value.nextOffset = -1
+  timelineInfo.value.nextSectionLen = -1
 
-  sections.value = structuredClone(player.sections)
-  loops.value = []
+  // flowSections.value = structuredClone(player.sections)
+  loopIncrements.value = []
 
   injectStartPoint.value = JSON.stringify(ev.to?.index || [])
  
-  indexes.value = {
+  queueIndexes.value = {
     current: ev.to?.index || [],
     next: undefined
   }
@@ -143,17 +120,17 @@ const pending = ref<any[]>([])
 player.addEventListener('queue', (ev)=>{
   const key = 'key_'+ev.to?.name + ev.from?.name
   pending.value.push({key, to: ev.to, from: ev.from})
-  console.log("queue",ev)
+  // console.log("queue",ev)
   try{
     if(ev.to){
-      timing.value.nextTicks = (ev.to.region[1] - ev.to.region[0]) * timing.value.meterBeats
-      timing.value.nextOffset = ev.to.region[0] * timing.value.meterBeats
+      timelineInfo.value.nextSectionLen = (ev.to.region[1] - ev.to.region[0]) * timelineInfo.value.meterBeats
+      timelineInfo.value.nextOffset = ev.to.region[0] * timelineInfo.value.meterBeats
     }
 
     if(!ev.breakout)
-    loops.value = structuredClone(player.getProgression().increments || null)
+    loopIncrements.value = structuredClone(player.getProgression().increments || null)
 
-    indexes.value = {
+    queueIndexes.value = {
       current: ev.from?.index || [],
       next: ev.to?.index
     }
@@ -165,39 +142,51 @@ player.addEventListener('queue', (ev)=>{
 player.addEventListener('cancel', (ev)=>{
   // pending.value = null
   const key = 'key_'+ev.to?.name + ev.from?.name
-  console.log("cancel",ev)
+  // console.log("cancel",ev)
   pending.value = pending.value.filter((v)=>v.key !== key)
 
-  timing.value.nextTicks = null
-  timing.value.nextOffset = null
-  loops.value = []
+  timelineInfo.value.nextOffset = -1
+  timelineInfo.value.nextSectionLen = -1
+  loopIncrements.value = []
 
-  indexes.value = {
+  queueIndexes.value = {
     current: ev.from?.index || [],
     next: undefined
   }
 })
 
-player.addEventListener('transport',(ev)=>{
+player.addEventListener('transport',(ev: TransportEvent)=>{
+  dynamicInfo.click = ev.beat
+  dynamicInfo.countdown = ev.countdown || -1;
+  dynamicInfo.countdownTime = player.beatsCountToSeconds(ev.countdown || 0);
+  
   if(!ev.progress) return
-  timing.value.beat = ev.progress[0]
-  timing.value.ticks = ev.progress[1]
-  timing.value.offset = (player?.current?.region[0] || 0) * timing.value.meterBeats
+  dynamicInfo.sectionBeat = ev.progress[0]
 })
 
+
+
+const toggles = reactive({
+  tracks: false,
+  sections: false,
+  info: false
+})
+const solo = ref('')
+const mute = ref<string[]>([])
 
 async function begin(){
   await player.play()
 }
-
 
 async function loadFile(file,audioContent?,autoplay = true){
   const m = await player.parseManifest(file)
   if(m){
     await player.useManifest(m, {loadSound: audioContent})
     songInfo.value = m
-    timing.value.meter = player.timingInfo.meter as [number,number]
-    timing.value.meterBeats = timing.value.meter[0]
+    timelineInfo.value.meter = player.timingInfo.meter as [number,number]
+    timelineInfo.value.meterBeats = timelineInfo.value.meter[0]
+    timelineInfo.value.bpm = player.timingInfo.bpm
+    timelineInfo.value.beatDuration = player.timingInfo.beatDuration
     makeFlow(m.manifest)
     console.log(player,m)
     volumes.value = player.trackList.reduce((acc:{[key:string]: number},t) =>{
@@ -210,6 +199,7 @@ async function loadFile(file,audioContent?,autoplay = true){
     toggles.sections = true;
     toggles.tracks = true;
     toggles.info = true;
+    player.toggleMetronome()
   }
 }
 
@@ -243,10 +233,6 @@ async function loadFromFileBrowser(){
   }
 }
 
-
-const solo = ref('')
-const mute = ref<string[]>([])
-
 watch(mute,(mutes)=>{
   if(!player.trackList) return
   player.trackList.forEach(t=>{
@@ -277,10 +263,7 @@ onUnmounted(()=>{
   player.stop(false)
 })
 
-onMounted(async ()=>{
-  // await loadFile("sample")
-  
-})
+
 
 
 </script>
@@ -304,7 +287,7 @@ onMounted(async ()=>{
     <Control v-if="!playing" icon="play" @click="begin"/>
     <Control v-else icon="stop" @click="player.state === 'stopping' ? player.stop(false) : player.stop()"/>
     
-    <Control v-if="timing.countdown" class="animate-pulse text-yellow-400" @click="player.cancel()">{{timing.countdown}}</Control>
+    <Control v-if="dynamicInfo.countdown !== -1" class="animate-pulse text-yellow-400" @click="player.cancel()">{{dynamicInfo.countdown}}</Control>
     <Control v-else icon="fast-forward" @click="player.continue()"/>
     
     <Control icon="skip-forward" @click="player.continue(true)"></Control>
@@ -317,7 +300,9 @@ onMounted(async ()=>{
     <Logo class="mx-auto " @click="toggles.info = !toggles.info" :text="songInfo?.meta.title" :sub="songInfo?.meta &&('by' + songInfo?.meta.author)"></Logo>
 
     <div class="h-min flex justify-evenly flex-wrap">
-    <Control icon="symmetry-vertical" :small="true" @click="player.toggleMetronome()" />
+    <Control :small="true" @click="player.toggleMetronome()" class="flex items-center justify-center w-32 h-8">
+      <p class=" bg-transparent text-center text-sm font-mono">[{{dynamicInfo.click}}] {{ dynamicInfo.sectionBeat }}/{{timelineInfo.sectionLen}}</p>
+    </Control>
     <Control icon="volume-down" :small="true" :highlight="toggles.tracks" @click="toggles.tracks = !toggles.tracks" />
     <Control icon="calendar3-range" :small="true" :highlight="toggles.sections" @click="toggles.sections = !toggles.sections" />
     <Control icon="file-earmark-music" :small="true" @click="loadFromFileBrowser" />
@@ -338,36 +323,36 @@ onMounted(async ()=>{
       
     /> -->
     <Timeline 
-      :region="[0,timing.totalMeasures]"
-      :meter="timing.meter"
+      :region="[0,timelineInfo.songTotalMeasures]"
+      :meter="(timelineInfo.meter as [number,number])"
       height="3rem"
       width="100vw"
     >
-      <TimingGrain v-for="g in timing.grains"
-        :ticks="timing.ticks / timing.grains"
-        :totalTicks="timing.totalTicks"
-        :offset="timing.offset + ((g-1) * (timing.ticks / timing.grains))"
-        :fill="timing.beat <= (g * timing.ticks/timing.grains) && timing.beat > ((g-1) * timing.ticks/timing.grains) ? 'white' : 'none'"
+      <TimingGrain v-for="g in timelineInfo.grains"
+        :ticks="timelineInfo.sectionLen / timelineInfo.grains"
+        :totalTicks="timelineInfo.songTotalTicks"
+        :offset="timelineInfo.currentOffset + ((g-1) * (timelineInfo.sectionLen/ timelineInfo.grains))"
+        :fill="dynamicInfo.sectionBeat <= (g * timelineInfo.sectionLen/timelineInfo.grains) && dynamicInfo.sectionBeat > ((g-1) * timelineInfo.sectionLen/timelineInfo.grains) ? 'white' : 'none'"
         stroke="none"
         style="mix-blend-mode: difference"
       ></TimingGrain>
 
       <Playhead 
-        :offset="timing.offset"
-        :ticks="timing.ticks"
-        :totalTicks="timing.totalTicks"
-        :beat="timing.beat"
-        :bpm="player.timingInfo.bpm"
+        :offset="timelineInfo.currentOffset"
+        :ticks="timelineInfo.sectionLen"
+        :totalTicks="timelineInfo.songTotalTicks"
+        :beat="dynamicInfo.sectionBeat"
+        :bpm="timelineInfo.bpm"
         class="current"
         :class="player.state"
       />
 
-      <Playhead v-if="timing.nextTicks !== null"
-        :offset="timing.nextOffset!"
-        :ticks="timing.nextTicks"
-        :totalTicks="timing.totalTicks"
-        :beat="player.state === 'transition' ? timing.beat : 0"
-        :bpm="player.timingInfo.bpm"
+      <Playhead v-if="timelineInfo.nextOffset !== -1"
+        :offset="timelineInfo.nextOffset"
+        :ticks="timelineInfo.nextSectionLen"
+        :totalTicks="timelineInfo.songTotalTicks"
+        :beat="0"
+        :bpm="timelineInfo.bpm"
         class="next"
         :class="player.state"
       />
@@ -377,7 +362,11 @@ onMounted(async ()=>{
 
   <h1 class='heading' v-if="toggles.sections" >Sections</h1>
   <section class="overflow-y-scroll max-w-screen ">
-  <SectionBlock v-if="sections && toggles.sections" :clickSection="(index)=>{player.cancel(); player.continue(index)}" class="!mx-auto" :sections="sections" :loops="loops" :indexes="indexes"/>
+  <SectionBlock v-if="flowSections && toggles.sections" 
+    :clickSection=" (index)=>{player.continue(index)}" 
+    :injectSection="(index)=>{player.overrideCurrent(index)}" 
+    class="!mx-auto" :sections="flowSections" :loops="loopIncrements" :indexes="queueIndexes">
+  </SectionBlock>
   </section>
 
   <h1 class='heading' v-if="toggles.tracks">Tracks</h1>
@@ -403,22 +392,17 @@ onMounted(async ()=>{
 
 
   <h1 class='heading' v-if="songInfo && toggles.info">Info</h1>
-  <section v-if="songInfo && toggles.info" class="flex flex-wrap justify-between gap-4 p-4">
-    <div class="flex flex-col">
-      <h2 class="heading-sm">Meta</h2>
-      <p>Created: {{(new Date(songInfo.meta.created * 1000)).toDateString()}} ({{songInfo.meta.created}})</p>
-      <p>Version: {{songInfo.meta.version}}</p>
-    </div>
+  <section v-if="songInfo && toggles.info" class="flex flex-wrap justify-around gap-4 p-4">
 
-    <div class="flex flex-col">
+    <div class="flex flex-col border rounded-sm p-2">
       <h2 class="heading-sm">Timing</h2>
-      <b>Next event in {{parseFloat(timing.countdownTime || 0).toFixed(4)}}s</b>
+      <b>Next event in {{(dynamicInfo.countdownTime || 0).toFixed(4)}}s</b>
       <p>BMP: {{player.timingInfo.bpm}} @ {{player.timingInfo.meter[0]}}/{{player.timingInfo.meter[1]}}  </p>
       <p>Beat Duration: {{player.timingInfo.beatDuration}}s</p>
       <p>Grain(default): {{player.timingInfo.grain}} beats</p>
     </div>  
     
-    <div class="flex flex-col">
+    <div class="flex flex-col border rounded-sm p-2">
       <h2 class="heading-sm">Regions</h2>
       <ol>
         <li class="flex justify-between font-mono" v-for="[k,v] of Object.entries(songInfo.manifest.playback.map)" :key="k+v">
@@ -428,12 +412,19 @@ onMounted(async ()=>{
       </ol>
     </div>  
 
-    <div class="flex flex-col">
+    <div class="flex flex-col border rounded-sm p-2">
       <h2 class="heading-sm">Flow</h2>
       <ol>
         <RecursiveLI groupClass="ml-4" elementClass="list-item list-inside list-decimal font-mono" :items="songInfo.manifest.playback.flow"/>
       </ol>
-    </div>  
+    </div>      
+    
+    <div class="flex flex-col border rounded-sm p-2">
+      <h2 class="heading-sm">Meta</h2>
+      <p>Created: {{(new Date(songInfo.meta.created * 1000)).toDateString()}} ({{songInfo.meta.created}})</p>
+      <p>Version: {{songInfo.meta.version}}</p>
+    </div>
+
   </section>
 
   <details v-if="songInfo && toggles.info" class="p-4">
