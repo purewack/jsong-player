@@ -23,7 +23,7 @@ import { gainToDb } from "tone";
 
 const player = new JSONg();
 const playing = ref(false);
-
+const errorInfo = ref('');
 const songInfo = ref<PlayerManifest>()
 const dynamicInfo = reactive({
   click: 0,
@@ -33,8 +33,8 @@ const dynamicInfo = reactive({
   countdownTime: -1,
 })
 const timelineInfo = ref({
-  meter: [0,0],
-  meterBeats: 0,
+  meter: [4,4],
+  meterBeats: 4,
   
   currentOffset: -1,
   nextOffset: -1,
@@ -42,8 +42,8 @@ const timelineInfo = ref({
   sectionLen:0,
   nextSectionLen:0,
 
-  songTotalTicks: 0,
-  songTotalMeasures: 0,
+  songTotalTicks: 64,
+  songTotalMeasures: 16,
 
   grains: 0,
   bpm: 0,
@@ -169,7 +169,8 @@ player.addEventListener('transport',(ev: TransportEvent)=>{
 const toggles = reactive({
   tracks: false,
   sections: false,
-  info: false
+  info: false,
+  dark: false
 })
 const solo = ref('')
 const mute = ref<string[]>([])
@@ -219,16 +220,24 @@ async function loadFromFileBrowser(){
         console.log("trying audio", rawAudioFile)
         const decoded = await player.audioContext.decodeAudioData(rawAudioFile)
         audioContent[src] = decoded
+        errorInfo.value = ''
       }
       catch(e){
         console.error(e)
+        errorInfo.value = e
       }
       
     }
     console.log("[front][load]",result.filePath,audioContent)
     if(audioContent){
-      await loadFile(result.content,audioContent)
-      await player.play()
+      try{
+        await loadFile(result.content,audioContent)
+        await player.play()
+        errorInfo.value = ''
+      }
+      catch(e){
+        errorInfo.value = e
+      }
     }
   }
 }
@@ -282,7 +291,7 @@ onUnmounted(()=>{
 <template>
 
 
-  <nav class="controls max-w-screen flex items-center justify-between">
+  <nav :class="!toggles.dark && 'light'" class="controls max-w-screen flex items-center justify-between">
     <div class="flex">
     <Control v-if="!playing" icon="play" @click="begin"/>
     <Control v-else icon="stop" @click="player.state === 'stopping' ? player.stop(false) : player.stop()"/>
@@ -305,6 +314,7 @@ onUnmounted(()=>{
     </Control>
     <Control icon="volume-down" :small="true" :highlight="toggles.tracks" @click="toggles.tracks = !toggles.tracks" />
     <Control icon="calendar3-range" :small="true" :highlight="toggles.sections" @click="toggles.sections = !toggles.sections" />
+    <Control icon="moon" :small="true" :highlight="toggles.dark" @click="toggles.dark = !toggles.dark" />
     <Control icon="file-earmark-music" :small="true" @click="loadFromFileBrowser" />
     </div>
     <!-- <p>{{ playerInfo }}</p>
@@ -312,6 +322,9 @@ onUnmounted(()=>{
     <Logo />  -->
   </nav>
 
+  <section v-if="errorInfo" class="m-8 text-xl text-red-400 w-max mx-auto">
+    <code class="p-4">Error: {{ errorInfo }}</code>
+  </section>
 
   <section class="w-screen my-4">
     <!-- <Timeline 
@@ -446,6 +459,10 @@ main {
   grid-area: time;
 }
 
+body:has(.light) {
+  --color-background: #eee;
+  --color-text: #111;
+}
 
 .heading{
   font-weight: 100;
