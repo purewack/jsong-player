@@ -242,6 +242,7 @@ async function loadFromFileBrowser(){
         await loadFile(result.content,audioContent)
         await player.play()
         errorInfo.value = ''
+        toggles.help = false
       }
       catch(e){
         errorInfo.value = e
