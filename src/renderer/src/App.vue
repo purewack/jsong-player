@@ -61,6 +61,13 @@ function skipTo(){
   catch{}
 }
 
+function clickSection(index: PlayerIndex){
+  if(player.state === 'stopped') {
+    player.play(index)
+  }
+  else player.continue(index)
+}
+
 const loopIncrements = ref()
 const queueIndexes = ref<{
   current: PlayerIndex,
@@ -170,7 +177,8 @@ const toggles = reactive({
   tracks: false,
   sections: false,
   info: false,
-  dark: false
+  dark: false,
+  help: true,
 })
 const solo = ref('')
 const mute = ref<string[]>([])
@@ -288,10 +296,18 @@ onUnmounted(()=>{
 }
 </style>
 
+<style>
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+</style>
+
 <template>
 
 
-  <nav :class="!toggles.dark && 'light'" class="controls max-w-screen flex items-center justify-between">
+  <nav :class="[!toggles.dark && 'light', !toggles.help && player.state === null && 'my-auto']" class="controls max-w-screen flex items-center justify-between">
     <div class="flex">
     <Control v-if="!playing" icon="play" @click="begin"/>
     <Control v-else icon="stop" @click="player.state === 'stopping' ? player.stop(false) : player.stop()"/>
@@ -316,6 +332,7 @@ onUnmounted(()=>{
     <Control icon="calendar3-range" :small="true" :highlight="toggles.sections" @click="toggles.sections = !toggles.sections" />
     <Control icon="moon" :small="true" :highlight="toggles.dark" @click="toggles.dark = !toggles.dark" />
     <Control icon="file-earmark-music" :small="true" @click="loadFromFileBrowser" />
+    <Control icon="question-diamond" :small="true" :highlight="toggles.help" @click="toggles.help = !toggles.help"/>
     </div>
     <!-- <p>{{ playerInfo }}</p>
     <MetaInfo :meta="songInfo.meta" :playback="songInfo.playbackInfo" />
@@ -325,6 +342,7 @@ onUnmounted(()=>{
   <section v-if="errorInfo" class="m-8 text-xl text-red-400 w-max mx-auto">
     <code class="p-4">Error: {{ errorInfo }}</code>
   </section>
+
 
   <section class="w-screen my-4">
     <!-- <Timeline 
@@ -373,10 +391,34 @@ onUnmounted(()=>{
     </Timeline> 
   </section>
 
+  <section v-if="toggles.help" class="p-4 max-w-[70ch] mx-auto font-mono">
+    <h1 class="heading text-center">How to use the player:</h1>
+  
+    <p>To load files, use the <Control icon="file-earmark-music" :small="true"/> button, then find your .jsong or .json file.</p>
+    <p>The sound will auto-play with the metronome off, which you can toggle by pressing:
+      <Control :small="true" class="flex items-center justify-center w-32 h-8">
+        <p class=" bg-transparent text-center text-sm font-mono">[{{dynamicInfo.click}}] {{ dynamicInfo.sectionBeat }}/{{timelineInfo.sectionLen}}</p>
+      </Control>
+    </p>
+   <br/>
+    <p>When you load your file, it will auto-play from the first defined section. Use the <code class="text-white font-mono text-sm">See Manifest</code> option to inspect your file</p>
+    <br/>
+    <p>The <Control icon="play"/> button will change to a <Control icon="stop"/> if playing music. You can press the <Control icon="stop"/> to queue a stop, or double press to stop immediately</p>
+    <p>The <Control icon="fast-forward"/> button will trigger the next section queue transition.</p>
+    <p>The <Control icon="skip-forward"/> will do the same but will not follow looping rules defined by flow repeats.</p>
+    <p>You can also use the <Control @click="skipTo" class="inline">
+      <input type="text" placeholder="[0]" class=" w-16 h-8 bg-transparent text-center text-sm font-mono"></input>
+    </Control>
+    to queue a particular section, by index number. You can do the same by simply clicking the section you want within the section flow map. 
+    </p>
+    <br/>
+    <p>Injecting sections means a substitution of the current playing section for the one you want to swap to. This will happen instantly and can sound out of place. This can be quantized in the manifest file using the @ notation.</p>
+  </section>
+
   <h1 class='heading' v-if="toggles.sections" >Sections</h1>
   <section class="overflow-y-scroll max-w-screen ">
   <SectionBlock v-if="flowSections && toggles.sections" 
-    :clickSection=" (index)=>{player.continue(index)}" 
+    :clickSection="clickSection" 
     :injectSection="(index)=>{player.overrideCurrent(index)}" 
     class="!mx-auto" :sections="flowSections" :loops="loopIncrements" :indexes="queueIndexes">
   </SectionBlock>
