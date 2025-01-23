@@ -2,10 +2,10 @@
 import "bootstrap-icons/font/bootstrap-icons.css"
 import { ref, reactive, provide, onUnmounted, watch } from "vue";
 
-import JSONg from 'jsong-audio/src'
-import { ClickEvent, StateEvent, TransportEvent } from "jsong-audio/src/types/events";
-import { PlayerIndex, PlayerManifest } from "jsong-audio/src/types/player";
-import { JSONgManifestFile } from "jsong-audio/src/types/jsong";
+import JSONg from 'jsong-audio'
+import { ClickEvent, StateEvent, TransportEvent } from "jsong-audio/dist/types/events";
+import { PlayerIndex, PlayerManifest } from "jsong-audio/dist/types/player";
+import { JSONgManifestFile } from "jsong-audio/dist/types/jsong";
 
 import Logo from "./parts/Logo.vue";
 import Control from "./parts/Control.vue";

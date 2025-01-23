@@ -1,34 +1,9 @@
-# electron-app
+# JSONg-Player
 
-An Electron application with Vue
+Used to play .jsong files easily.
 
-## Recommended IDE Setup
+You can use the player to preview and test your .jsong files.
 
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar)
+As of now there is no editor function in the player, that is something that could be added later.
 
-## Project Setup
-
-### Install
-
-```bash
-$ npm install
-```
-
-### Development
-
-```bash
-$ npm run dev
-```
-
-### Build
-
-```bash
-# For windows
-$ npm run build:win
-
-# For macOS
-$ npm run build:mac
-
-# For Linux
-$ npm run build:linux
-```
+Please see [jsong-audio](https://github.com/purewack/jsong-audio) for more information.
