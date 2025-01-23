@@ -21,7 +21,7 @@ function createWindow() {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
-    mainWindow.openDevTools({mode: 'right'})
+    // mainWindow.openDevTools({mode: 'right'})
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
