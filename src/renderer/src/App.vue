@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import "bootstrap-icons/font/bootstrap-icons.css"
-import { ref, reactive, provide, onUnmounted, watch } from "vue";
+import { ref, reactive, provide, onUnmounted, watch, onMounted } from "vue";
 
 import JSONg from 'jsong-audio'
 import { ClickEvent, StateEvent, TransportEvent } from "jsong-audio/dist/types/events";
@@ -16,6 +16,7 @@ import SectionBlock from "./parts/SectionBlock.vue";
 import RecursiveLI from "./parts/RecursiveLI.vue";
 
 import { gainToDb } from "tone";
+import HelpDoc from "./parts/HelpDoc.vue";
 
 
 
@@ -178,8 +179,18 @@ const toggles = reactive({
   sections: false,
   info: false,
   dark: false,
-  help: true,
+  help: false,
 })
+
+onMounted(()=>{
+  const autoHelp = localStorage.getItem('jsong-help')
+  if(!autoHelp)
+  setTimeout(()=>{
+    toggles.help = true;
+    localStorage.setItem('jsong-help',true)
+  },500)
+})
+
 const solo = ref('')
 const mute = ref<string[]>([])
 
@@ -208,11 +219,12 @@ async function loadFile(file,audioContent?,autoplay = true){
     toggles.sections = true;
     toggles.tracks = true;
     toggles.info = true;
-    player.toggleMetronome()
+    // player.toggleMetronome()
   }
 }
 
 async function loadFromFileBrowser(){
+  toggles.help = false
   //ts-ignore
   type ElectronWindow = Window & typeof globalThis & {api: any}
   const api = (window as ElectronWindow).api
@@ -242,7 +254,6 @@ async function loadFromFileBrowser(){
         await loadFile(result.content,audioContent)
         await player.play()
         errorInfo.value = ''
-        toggles.help = false
       }
       catch(e){
         errorInfo.value = e
@@ -306,9 +317,12 @@ onUnmounted(()=>{
 </style>
 
 <template>
+  <div class="player" :class="toggles.help && 'help-reveal'">
 
-
-  <nav :class="[!toggles.dark && 'light', !toggles.help && player.state === null && 'my-auto']" class="controls max-w-screen flex items-center justify-between">
+    <div class="spacer"></div>
+  
+  <div>
+  <nav :class="[!toggles.dark && 'light']" class="controls max-w-screen flex items-center justify-between">
     <div class="flex">
     <Control v-if="!playing" icon="play" @click="begin"/>
     <Control v-else icon="stop" @click="player.state === 'stopping' ? player.stop(false) : player.stop()"/>
@@ -343,7 +357,12 @@ onUnmounted(()=>{
   <section v-if="errorInfo" class="m-8 text-xl text-red-400 w-max mx-auto">
     <code class="p-4">Error: {{ errorInfo }}</code>
   </section>
+  </div>
 
+
+  <HelpDoc class="help-content" :active="toggles.help"/>
+  
+  </div>
 
   <section class="w-screen my-4">
     <!-- <Timeline 
@@ -364,9 +383,8 @@ onUnmounted(()=>{
         :ticks="timelineInfo.sectionLen / timelineInfo.grains"
         :totalTicks="timelineInfo.songTotalTicks"
         :offset="timelineInfo.currentOffset + ((g-1) * (timelineInfo.sectionLen/ timelineInfo.grains))"
-        :fill="dynamicInfo.sectionBeat <= (g * timelineInfo.sectionLen/timelineInfo.grains) && dynamicInfo.sectionBeat > ((g-1) * timelineInfo.sectionLen/timelineInfo.grains) ? 'white' : 'none'"
+        :fill="dynamicInfo.sectionBeat <= (g * timelineInfo.sectionLen/timelineInfo.grains) && dynamicInfo.sectionBeat > ((g-1) * timelineInfo.sectionLen/timelineInfo.grains) ? 'gray' : 'none'"
         stroke="none"
-        style="mix-blend-mode: difference"
       ></TimingGrain>
 
       <Playhead 
@@ -392,29 +410,6 @@ onUnmounted(()=>{
     </Timeline> 
   </section>
 
-  <section v-if="toggles.help" class="p-4 max-w-[70ch] mx-auto font-mono">
-    <h1 class="heading text-center">How to use the player:</h1>
-  
-    <p>To load files, use the <Control icon="file-earmark-music" :small="true"/> button, then find your .jsong or .json file.</p>
-    <p>The sound will auto-play with the metronome off, which you can toggle by pressing:
-      <Control :small="true" class="flex items-center justify-center w-32 h-8">
-        <p class=" bg-transparent text-center text-sm font-mono">[{{dynamicInfo.click}}] {{ dynamicInfo.sectionBeat }}/{{timelineInfo.sectionLen}}</p>
-      </Control>
-    </p>
-   <br/>
-    <p>When you load your file, it will auto-play from the first defined section. Use the <code class="text-white font-mono text-sm">See Manifest</code> option to inspect your file</p>
-    <br/>
-    <p>The <Control icon="play"/> button will change to a <Control icon="stop"/> if playing music. You can press the <Control icon="stop"/> to queue a stop, or double press to stop immediately</p>
-    <p>The <Control icon="fast-forward"/> button will trigger the next section queue transition.</p>
-    <p>The <Control icon="skip-forward"/> will do the same but will not follow looping rules defined by flow repeats.</p>
-    <p>You can also use the <Control @click="skipTo" class="inline">
-      <input type="text" placeholder="[0]" class=" w-16 h-8 bg-transparent text-center text-sm font-mono"></input>
-    </Control>
-    to queue a particular section, by index number. You can do the same by simply clicking the section you want within the section flow map. 
-    </p>
-    <br/>
-    <p>Injecting sections means a substitution of the current playing section for the one you want to swap to. This will happen instantly and can sound out of place. This can be quantized in the manifest file using the @ notation.</p>
-  </section>
 
   <h1 class='heading' v-if="toggles.sections" >Sections</h1>
   <section class="overflow-y-scroll max-w-screen ">
@@ -655,4 +650,26 @@ body:has(.light) {
   background: currentColor; 
 }
 
+.player {
+    height: calc(100vh - 5rem);
+    display: grid;
+    grid-template-rows: auto 0fr 0fr auto;
+    overflow: hidden;
+    transition: grid-template-rows 1s;
+}
+
+.player.help-reveal {
+    grid-template-rows: auto 0fr 1fr auto;
+    overflow: scroll;
+}
+
+.help-content {
+    min-height: 0;
+    transition: opacity 1s;
+    opacity: 0;
+}
+
+.player.help-reveal .help-content {
+    opacity: 1;
+}
 </style>

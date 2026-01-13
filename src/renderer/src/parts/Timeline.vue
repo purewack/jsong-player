@@ -39,7 +39,7 @@ const ticks = computed(()=>{
     <text
       v-for="measure in measures"
       text-anchor="end"
-      alignment-baseline="hanging"
+      dominant-baseline="hanging"
       :x="`${(measure / measures) * 100}%`"
       y="0%"
       stroke="none"

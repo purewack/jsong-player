@@ -7,10 +7,12 @@
 </script>
 
 <template>
+  <g style="filter: opacity(50%)">
     <rect rx="2"
         :x=" (100 * ((ticks / totalTicks) * ((offset) / ticks)) )+ '%'" 
         :width="100 * (ticks / totalTicks) + '%'"
         y="0%"
         height="33%"
     />
+  </g>
 </template>
