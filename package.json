@@ -11,6 +11,8 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "build:web": "vite build --config ./vite.web.config.mjs",
+    "preview:web": "vite preview --config ./vite.web.config.mjs --port 5173",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
