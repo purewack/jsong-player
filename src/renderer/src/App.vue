@@ -18,9 +18,7 @@ import RecursiveLI from "./parts/RecursiveLI.vue";
 import { gainToDb } from "tone";
 import HelpDoc from "./parts/HelpDoc.vue";
 
-
-
-
+type ElectronWindow = Window & typeof globalThis & {api: any}
 
 const player = new JSONg();
 const playing = ref(false);
@@ -173,22 +171,102 @@ player.addEventListener('transport',(ev: TransportEvent)=>{
 })
 
 
+function initPlayerWithManifest(m: JSONgManifestFile){
+  songInfo.value = m
+  timelineInfo.value.meter = player.timingInfo.meter as [number,number]
+  timelineInfo.value.meterBeats = timelineInfo.value.meter[0]
+  timelineInfo.value.bpm = player.timingInfo.bpm
+  timelineInfo.value.beatDuration = player.timingInfo.beatDuration
+  makeFlow(m.manifest)
+  console.log(player,m)
+  volumes.value = player.trackList.reduce((acc:{[key:string]: number},t) =>{
+    acc[t.name] = 1
+    return acc
+  },{})
+  // mute.value = player.trackList.map(t=>t.name)
+  mute.value = []
+  solo.value = ''
+  toggles.sections = true;
+  toggles.tracks = true;
+  toggles.info = true;
+  // player.toggleMetronome()
+}
+
 
 const toggles = reactive({
   tracks: false,
   sections: false,
   info: false,
-  dark: false,
   help: false,
+  dark: localStorage.getItem('theme-dark') === 'true' ? true : false
 })
 
-onMounted(()=>{
+function themeToggle(){
+  toggles.dark = !toggles.dark
+  localStorage.setItem('theme-dark',''+toggles.dark)
+}
+
+const srcURL = ref('')
+const showModalURL = ref(false);
+
+async function loadHosted(){
+  try{
+  if(srcURL.value){
+    showModalURL.value = false;
+    await loadFromURL(srcURL.value)
+  }
+  }
+  catch(e){
+    console.error(e)
+    errorInfo.value = e
+  }
+}
+
+async function loadFromSearchParam(){
+  try {
+    const sourceParam = sourceURL.value
+    sourceURL.value = false;
+    
+    if(!sourceParam) {
+      console.error('no param')
+    }
+    
+    const url = decodeURIComponent(sourceParam)
+    console.log('[web] Loading from URL:', url)
+    
+    await loadFromURL(url)
+  }
+  catch(e) {
+    console.error('[web] Error loading from URL:', e)
+    errorInfo.value = `Error loading from URL: ${e}`
+  }
+}
+
+async function loadFromURL(sourceURL: string){
+  const m = await player.parseManifest(sourceURL)
+  if(!m){
+    throw new Error('manifest error',m)
+  }
+  await player.useManifest(m)
+  initPlayerWithManifest(m)
+  await player.play()
+  errorInfo.value = ''
+}
+
+const sourceURL = ref(false)
+
+onMounted(async ()=>{
   const autoHelp = localStorage.getItem('jsong-help')
   if(!autoHelp)
   setTimeout(()=>{
     toggles.help = true;
-    localStorage.setItem('jsong-help',true)
+    localStorage.setItem('jsong-help','true')
   },500)
+  
+  fetch('https://static.whitewasp.co.uk/test.jsong')
+  // Try to load from URL parameter
+  const params = new URLSearchParams(window.location.search)
+  if(params.has('url')) sourceURL.value = params.get('url')
 })
 
 const solo = ref('')
@@ -201,43 +279,31 @@ async function begin(){
 async function loadFile(file,audioContent?,autoplay = true){
   const m = await player.parseManifest(file)
   if(m){
+    console.log("manifest",m)
     await player.useManifest(m, {loadSound: audioContent})
-    songInfo.value = m
-    timelineInfo.value.meter = player.timingInfo.meter as [number,number]
-    timelineInfo.value.meterBeats = timelineInfo.value.meter[0]
-    timelineInfo.value.bpm = player.timingInfo.bpm
-    timelineInfo.value.beatDuration = player.timingInfo.beatDuration
-    makeFlow(m.manifest)
-    console.log(player,m)
-    volumes.value = player.trackList.reduce((acc:{[key:string]: number},t) =>{
-      acc[t.name] = 1
-      return acc
-    },{})
-    // mute.value = player.trackList.map(t=>t.name)
-    mute.value = []
-    solo.value = ''
-    toggles.sections = true;
-    toggles.tracks = true;
-    toggles.info = true;
-    // player.toggleMetronome()
+    initPlayerWithManifest(m)
   }
 }
 
 async function loadFromFileBrowser(){
   toggles.help = false
   //ts-ignore
-  type ElectronWindow = Window & typeof globalThis & {api: any}
   const api = (window as ElectronWindow).api
   const result = await api.openFileDialog();
   if (result) {
-    const audioContent = {};
+    let audioContent = {};
     for (const src in result.content.sources) {
       const relativePath = result.content.sources[src]
+      if(relativePath.endsWith('==')) {
+        audioContent = undefined
+        break
+      }
+
       const abs = await api.resolvePath(result.folder, relativePath)
       const rawAudioFile = await api.fetchAudio(abs)
       // audioContent[src] = audioFileContent
       try{
-        console.log("trying audio", rawAudioFile)
+        // console.log("trying audio", rawAudioFile)
         const decoded = await player.audioContext.decodeAudioData(rawAudioFile)
         audioContent[src] = decoded
         errorInfo.value = ''
@@ -248,8 +314,8 @@ async function loadFromFileBrowser(){
       }
       
     }
-    console.log("[front][load]",result.filePath,audioContent)
-    if(audioContent){
+    // console.log("[front][load]",result.filePath,audioContent)
+    // if(audioContent){
       try{
         await loadFile(result.content,audioContent)
         await player.play()
@@ -258,7 +324,7 @@ async function loadFromFileBrowser(){
       catch(e){
         errorInfo.value = e
       }
-    }
+    // }
   }
 }
 
@@ -323,7 +389,7 @@ onUnmounted(()=>{
   
   <div>
   <nav :class="[!toggles.dark && 'light']" class="controls max-w-screen flex items-center justify-between">
-    <div class="flex">
+    <div class="flex flex-wrap flex-col w-32">
     <Control v-if="!playing" icon="play" @click="begin"/>
     <Control v-else icon="stop" @click="player.state === 'stopping' ? player.stop(false) : player.stop()"/>
     
@@ -331,23 +397,25 @@ onUnmounted(()=>{
     <Control v-else icon="fast-forward" @click="player.continue()"/>
     
     <Control icon="skip-forward" @click="player.continue(true)"></Control>
-    <Control @click="skipTo" class="inject-start flex">
-      <input @submit.prevent="skipTo" v-model="injectStartPoint" type="text" placeholder="[0]" class=" w-16 h-8 bg-transparent text-center text-sm font-mono"></input>
+    <Control @click="skipTo" class="inject-start flex justify-center">
+      <input @submit.prevent="skipTo" v-model="injectStartPoint" type="text" placeholder="[0]" class="w-16 h-8 bg-transparent text-center text-sm font-mono"></input>
     </Control>
     </div>
 
 
     <Logo class="mx-auto " @click="toggles.info = !toggles.info" :text="songInfo?.meta.title" :sub="songInfo?.meta &&('by' + songInfo?.meta.author)"></Logo>
 
-    <div class="h-min flex justify-evenly flex-wrap">
+    <div class="h-min flex justify-evenly flex-wrap flex-col">
+    <Control icon="file-earmark-music" :small="true" @click="loadFromFileBrowser" />
+    <Control icon="globe" :small="true" @click="showModalURL = true"/>
+    
+    <Control icon="volume-down" :small="true" :highlight="toggles.tracks" @click="toggles.tracks = !toggles.tracks" />
+    <Control icon="calendar3-range" :small="true" :highlight="toggles.sections" @click="toggles.sections = !toggles.sections" />
+    <Control icon="moon" :small="true" :highlight="toggles.dark" @click="themeToggle" />
+    <Control icon="question-diamond" :small="true" :highlight="toggles.help" @click="toggles.help = !toggles.help"/>
     <Control :small="true" @click="player.toggleMetronome()" class="flex items-center justify-center w-32 h-8">
       <p class=" bg-transparent text-center text-sm font-mono">[{{dynamicInfo.click}}] {{ dynamicInfo.sectionBeat }}/{{timelineInfo.sectionLen}}</p>
     </Control>
-    <Control icon="volume-down" :small="true" :highlight="toggles.tracks" @click="toggles.tracks = !toggles.tracks" />
-    <Control icon="calendar3-range" :small="true" :highlight="toggles.sections" @click="toggles.sections = !toggles.sections" />
-    <Control icon="moon" :small="true" :highlight="toggles.dark" @click="toggles.dark = !toggles.dark" />
-    <Control icon="file-earmark-music" :small="true" @click="loadFromFileBrowser" />
-    <Control icon="question-diamond" :small="true" :highlight="toggles.help" @click="toggles.help = !toggles.help"/>
     </div>
     <!-- <p>{{ playerInfo }}</p>
     <MetaInfo :meta="songInfo.meta" :playback="songInfo.playbackInfo" />
@@ -358,7 +426,6 @@ onUnmounted(()=>{
     <code class="p-4">Error: {{ errorInfo }}</code>
   </section>
   </div>
-
 
   <HelpDoc class="help-content" :active="toggles.help"/>
   
@@ -479,11 +546,37 @@ onUnmounted(()=>{
   </section>
 
   <details v-if="songInfo && toggles.info" class="p-4">
-    <summary class="bg-blue-500 text-blue-100 rounded-sm m-[1px]">See Manifest</summary>
+    <summary class="p-4 rounded-sm m-[1px]">See Manifest</summary>
     <code class="text-white block max-h-[50vh] overflow-y-scroll"><pre>{{songInfo.manifest}}</pre></code>
   </details>
-</template>
 
+  <Transition>
+  <div v-if="showModalURL" class="modal-input-url absolute top-0 left-0 w-full h-full bg-gray-500 bg-opacity-50 grid place-items-center" @click.self="showModalURL=false">
+    <div class="bg-gray-200 p-8 rounded-sm">
+      <h2 class="text-xl">Load from URL</h2>
+      <input class='my-2' v-model="srcURL" type="text" placeholder="https://..."/>
+      <div class="flex justify-between">
+      <button style="border-width: 1px;" class="text-orange-800 border-orange-800 rounded-sm px-2 my-1"  @click="showModalURL=false">Cancel</button>
+      <button style="border-width: 1px;" class="text-green-500 border-green-500 rounded-sm px-2 my-1" @click="loadHosted">Ok</button>
+      </div>
+    </div>
+  </div>
+  </Transition>
+
+  <Transition>
+  <div @click="loadFromSearchParam" v-if="sourceURL" class="modal-input-url absolute top-0 left-0 w-full h-full bg-white grid place-items-center">
+    <div class="bg-gray-200 p-8 rounded-sm flex flex-col items-center gap-4">
+      <Logo class="w-min"/>
+      <h2 class="text-2xl underline">Click anywhere to start</h2>
+      <p>Looks like the player wants to load sound from an external link
+      <br/>
+      Web browsers disable sound on page load
+      </p>
+      <code class="text-white max-w-[50vw]">loading: {{ sourceURL }}</code>
+    </div>
+  </div>
+  </Transition>
+</template>
 
 <style>
 /* 
@@ -491,6 +584,16 @@ onUnmounted(()=>{
   --color-text: #111;
   --color-background: ivory;
 } */
+
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+}
 
 main {
   height: max-content;

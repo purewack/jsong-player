@@ -1,7 +1,7 @@
 <template>
   <div class="logo">
     <div class="logo-content">
-    <h1>{{text || 'JSONg'}}</h1>
+    <h1 class="logo-text">{{text || 'JSONg'}}</h1>
     <h2>{{sub ? 'JSONg' : 'Player'}}</h2>
     </div>
     <h3 v-if="sub">{{ sub }}</h3>
@@ -34,5 +34,9 @@ defineProps<{text?:string, sub?:string}>()
   font-size: 1.5rem;
   line-height: 2rem;
   transform: translateY(0.5rem);
+}
+.logo-text {
+  word-wrap: normal;
+  max-width: 33vw;
 }
 </style>

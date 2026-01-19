@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import { PlayerSectionGroup, PlayerSection, PlayerIndex } from 'jsong-audio/src/types/player';
+import { PlayerSectionGroup, PlayerSection, PlayerIndex } from 'jsong-audio/dist/types/player';
 import { computed, ref } from 'vue';
 
 const index = ref<PlayerIndex>([])

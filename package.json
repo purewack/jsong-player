@@ -24,7 +24,7 @@
     "@electron-toolkit/utils": "^3.0.0",
     "axios": "^1.7.7",
     "bootstrap-icons": "^1.11.3",
-    "jsong-audio": "^1.0.1"
+    "jsong-audio": "^1.0.2"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config": "^1.0.2",
